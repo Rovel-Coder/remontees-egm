@@ -10,28 +10,21 @@ const serviceTitle = 'Gendarmerie Nationale'
 const serviceDescription = 'Déclaration des remontées EGM en Nouvelle Calédonie EGM 26/5'
 const logoText = ['Ministère', 'de l\'intérieur']
 
-const quickLinks = [
-  {
-    label: 'Remontées',
-    to: '/remontees',
-    icon: 'ri-flag-line',
-  },
-]
+// ✅ SUPPRIMÉ quickLinks (bouton Remontée)
 </script>
 
 <template>
   <div id="app">
-    <!-- Header Gendarmerie (inchangé) -->
+    <!-- ✅ HEADER SANS RECHERCHE + SANS BOUTON - TS FIX -->
     <DsfrHeader
       v-model="searchQuery"
       :service-title="serviceTitle"
       :service-description="serviceDescription"
       :logo-text="logoText"
-      :quick-links="quickLinks"
-      show-search
+      :quick-links="[]"
+      :show-search="false"
     />
 
-    <!-- Contenu principal avec formulaires -->
     <div class="fr-container fr-mt-3w fr-mt-md-5w fr-mb-5w">
       <router-view />
     </div>

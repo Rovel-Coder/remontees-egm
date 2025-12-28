@@ -4,136 +4,49 @@ import { reactive, ref } from 'vue'
 import CrcaForm from '@/components/CrcaForm.vue'
 import CrfmForm from '@/components/CrfmForm.vue'
 
-const showCrca = ref(false)
-const showCrfm = ref(false)
+const activeTab = ref<'none' | 'CRCA' | 'CRFM'>('none')
 const statusMessage = ref('')
 const statusTitle = ref('')
 
 const crcaFormData = reactive<Partial<CrcaModel>>({})
 const crfmFormData = reactive<Partial<CrfmModel>>({})
 
-// ✅ CRCA → /api/grist.post (FONCTIONNEL)
-async function sendCrcaToGrist (data: Partial<CrcaModel>): Promise<{ success: true, message: string, table: string }> {
-  const gristPayload = {
-    table: 'CRCA',
-    records: [{
-      secteur: data.secteur || '',
-      indicatifs: Array.isArray(data.indicatifs) ? data.indicatifs : [],
-      intervention: data.intervention || '',
-      natureIntervention: data.natureIntervention || '',
-      heureDebut: data.heureDebut || '',
-      heureFin: data.heureFin || '',
-      pam: data.pam || '',
-      lieu: data.lieu || '',
-      resume: data.resume || '',
-      personnel: data.personnel || '',
-      armement: data.armement || '',
-      materiel: data.materiel || ''
-    }]
-  }
-
-  const response = await fetch('/api/grist.post', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(gristPayload)
-  })
-
-  const result = await response.json()
-  if (response.ok && result.success) {
-    return { success: true, message: result.message || '✅ CRCA envoyé !', table: 'CRCA' }
-  }
-  throw new Error(result.error || 'Grist CRCA KO')
-}
-
-// ✅ CRFM → /api/grist.post (NOUVEAU - CORS OK)
-async function sendCrfmToGrist (data: Partial<CrfmModel>): Promise<{ success: true, message: string, table: string }> {
-  const gristPayload = {
-    table: 'CRFM',
-    records: [{
-      date: data.date || '',
-      secteur: data.secteur || '',
-      mission: data.mission || '',
-      horaire: data.horaire || '',
-      effectifs: data.effectifs || null,
-      vlEngages: data.vlEngages || null,
-      nbOad: data.nbOad || null,
-      controlesVl: data.controlesVl || null,
-      controlesPersonne: data.controlesPersonne || null,
-      nbInterCorgCic: data.nbInterCorgCic || null,
-      nbInterInitiative: data.nbInterInitiative || null,
-      rensFrm: data.rensFrm || null,
-      rensFrs: data.rensFrs || null,
-      stupCannabis: data.stupCannabis || null,
-      stupPlant: data.stupPlant || null,
-      stupAutres: data.stupAutres || '',
-      infraTa: data.infraTa || null,
-      infraDelits: data.infraDelits || null,
-      interpZgn: data.interpZgn || null,
-      interpZpn: data.interpZpn || null,
-      caillassageTouchant: data.caillassageTouchant || null,
-      caillassageNonTouchant: data.caillassageNonTouchant || null,
-      refusAvecInterp: data.refusAvecInterp || null,
-      refusSansInterp: data.refusSansInterp || null,
-      obstacle: data.obstacle || null,
-      feuHabitation: data.feuHabitation || null,
-      feuVoitures: data.feuVoitures || null,
-      feuAutres: data.feuAutres || null,
-      papafTouchant: data.papafTouchant || null,
-      papafNonTouchant: data.papafNonTouchant || null,
-      grenMp7: data.grenMp7 || null,
-      grenCm6: data.grenCm6 || null,
-      grenGenlDmp: data.grenGenlDmp || null,
-      grenGm2l: data.grenGm2l || null,
-      grenGl304: data.grenGl304 || null,
-      munLbd40: data.munLbd40 || null,
-      mun9mm: data.mun9mm || null,
-      mun556: data.mun556 || null,
-      mun762: data.mun762 || null,
-      commentairePam: data.commentairePam || ''
-    }]
-  }
-
-  const response = await fetch('/api/grist.post', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(gristPayload)
-  })
-
-  const result = await response.json()
-  if (response.ok && result.success) {
-    return { success: true, message: result.message || '✅ CRFM envoyé !', table: 'CRFM' }
-  }
-  throw new Error(result.error || 'Grist CRFM KO')
-}
-
-// 🔍 DEBUG CRFM - À SUPPRIMER APRÈS TEST
-async function submitCrfm () {
-  console.warn('🔍 DEBUG CRFM - Données formulaire:', JSON.stringify(crfmFormData, null, 2))
-
-  try {
-    const result = await sendCrfmToGrist(crfmFormData)
-    statusTitle.value = result.message
-    statusMessage.value = `✅ ${result.table} → Grist numerique.gouv.fr`
-    Object.assign(crfmFormData, {}) // Reset formulaire
-  }
-  catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
-    statusTitle.value = '❌ Erreur CRFM'
-    statusMessage.value = errorMessage
-  }
-}
-
-// ✅ SUBMIT CRCA
-async function submitCrca () {
+async function submitCrca (): Promise<void> {
   try {
     if (!crcaFormData.secteur || (crcaFormData.indicatifs?.length || 0) === 0) {
       throw new Error('Secteur + 1 indicatif obligatoires')
     }
 
-    const result = await sendCrcaToGrist(crcaFormData)
-    statusTitle.value = result.message
-    statusMessage.value = `✅ ${result.table} → Grist numerique.gouv.fr`
-    Object.assign(crcaFormData, {}) // Reset
+    const response = await fetch('/api/grist.post', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        table: 'CRCA',
+        records: [{
+          secteur: crcaFormData.secteur || '',
+          indicatifs: Array.isArray(crcaFormData.indicatifs) ? crcaFormData.indicatifs : [],
+          intervention: crcaFormData.intervention || '',
+          natureIntervention: crcaFormData.natureIntervention || '',
+          heureDebut: crcaFormData.heureDebut || '',
+          heureFin: crcaFormData.heureFin || '',
+          pam: crcaFormData.pam || '',
+          lieu: crcaFormData.lieu || '',
+          resume: crcaFormData.resume || '',
+          personnel: crcaFormData.personnel || '',
+          armement: crcaFormData.armement || '',
+          materiel: crcaFormData.materiel || ''
+        }]
+      })
+    })
+
+    const result = await response.json()
+    if (response.ok && result.success) {
+      statusTitle.value = result.message || '✅ CRCA envoyé !'
+      statusMessage.value = `✅ CRCA → Grist numerique.gouv.fr`
+      Object.assign(crcaFormData, {})
+      return
+    }
+    throw new Error(result.error || 'Grist CRCA KO')
   }
   catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
@@ -142,30 +55,86 @@ async function submitCrca () {
   }
 }
 
-function toggleCrca () {
-  showCrca.value = !showCrca.value
+async function submitCrfm (): Promise<void> {
+  console.warn('🔍 DEBUG CRFM - Données:', JSON.stringify(crfmFormData, null, 2))
+
+  try {
+    const response = await fetch('/api/grist.post', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        table: 'CRFM',
+        records: [{
+          date: crfmFormData.date || '',
+          secteur: crfmFormData.secteur || '',
+          mission: crfmFormData.mission || '',
+          horaire: crfmFormData.horaire || '',
+          effectifs: crfmFormData.effectifs || null,
+          vlEngages: crfmFormData.vlEngages || null,
+          nbOad: crfmFormData.nbOad || null,
+          controlesVl: crfmFormData.controlesVl || null,
+          controlesPersonne: crfmFormData.controlesPersonne || null,
+          nbInterCorgCic: crfmFormData.nbInterCorgCic || null,
+          nbInterInitiative: crfmFormData.nbInterInitiative || null,
+          rensFrm: crfmFormData.rensFrm || null,
+          rensFrs: crfmFormData.rensFrs || null,
+          stupCannabis: crfmFormData.stupCannabis || null,
+          stupPlant: crfmFormData.stupPlant || null,
+          stupAutres: crfmFormData.stupAutres || '',
+          TA: crfmFormData.infraTa || null,
+          Delits: crfmFormData.infraDelits || null,
+          Interpellation_ZGN: crfmFormData.interpZgn || null,
+          Interpellation_ZPN: crfmFormData.interpZpn || null,
+          caillassageTouchant: crfmFormData.caillassageTouchant || null,
+          caillassageNonTouchant: crfmFormData.caillassageNonTouchant || null,
+          refusAvecInterp: crfmFormData.refusAvecInterp || null,
+          refusSansInterp: crfmFormData.refusSansInterp || null,
+          obstacle: crfmFormData.obstacle || null,
+          feuHabitation: crfmFormData.feuHabitation || null,
+          feuVoitures: crfmFormData.feuVoitures || null,
+          feuAutres: crfmFormData.feuAutres || null,
+          papafTouchant: crfmFormData.papafTouchant || null,
+          papafNonTouchant: crfmFormData.papafNonTouchant || null,
+          grenMp7: crfmFormData.grenMp7 || null,
+          grenCm6: crfmFormData.grenCm6 || null,
+          grenGenlDmp: crfmFormData.grenGenlDmp || null,
+          grenGm2l: crfmFormData.grenGm2l || null,
+          grenGl304: crfmFormData.grenGl304 || null,
+          munLbd40: crfmFormData.munLbd40 || null,
+          mun9mm: crfmFormData.mun9mm || null,
+          mun556: crfmFormData.mun556 || null,
+          mun762: crfmFormData.mun762 || null,
+          commentairePam: crfmFormData.commentairePam || ''
+        }]
+      })
+    })
+
+    const result = await response.json()
+    if (response.ok && result.success) {
+      statusTitle.value = result.message || '✅ CRFM envoyé !'
+      statusMessage.value = `✅ CRFM → Grist numerique.gouv.fr`
+      Object.assign(crfmFormData, {})
+      return
+    }
+    throw new Error(result.error || 'Grist CRFM KO')
+  }
+  catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
+    statusTitle.value = '❌ Erreur CRFM'
+    statusMessage.value = errorMessage
+  }
 }
 
-function resetCrfm () {
-  showCrfm.value = false
-}
+function setActiveTab (tab: 'CRCA' | 'CRFM'): void {
+  activeTab.value = tab
 
-function toggleCrfm () {
-  showCrfm.value = !showCrfm.value
-}
+  if (tab === 'CRCA') {
+    Object.assign(crfmFormData, {})
+  }
 
-function resetCrca () {
-  showCrca.value = false
-}
-
-function handleCrcaClick () {
-  toggleCrca()
-  resetCrfm()
-}
-
-function handleCrfmClick () {
-  toggleCrfm()
-  resetCrca()
+  if (tab === 'CRFM') {
+    Object.assign(crcaFormData, {})
+  }
 }
 </script>
 
@@ -189,34 +158,36 @@ function handleCrfmClick () {
       </div>
     </div>
 
-    <!-- BOUTONS DSFR CENTRÉS -->
-    <div class="fr-grid-row fr-grid-row--center fr-grid-row--gutters fr-mt-4w fr-mb-5w">
-      <div class="fr-col-12 fr-col-md-5 fr-col-lg-4">
+    <!-- ✅ BOUTONS DSFR UNIQUEMENT -->
+    <div class="fr-grid-row fr-grid-row--center fr-grid-row--gutters fr-mb-5w">
+      <div class="fr-col-12 fr-col-md-6">
         <button
-          class="fr-btn fr-btn--primary w-100"
-          @click="handleCrcaClick"
+          class="fr-btn fr-btn--primary w-100 dsfr-tab-btn"
+          :class="{ 'fr-btn--secondary': activeTab !== 'CRCA' }"
+          @click="setActiveTab('CRCA')"
         >
-          📋 Remontée CRCA ✅
+          Remontée CRCA
         </button>
       </div>
-      <div class="fr-col-12 fr-col-md-5 fr-col-lg-4">
+      <div class="fr-col-12 fr-col-md-6">
         <button
-          class="fr-btn fr-btn--secondary w-100"
-          @click="handleCrfmClick"
+          class="fr-btn fr-btn--primary w-100 dsfr-tab-btn"
+          :class="{ 'fr-btn--secondary': activeTab !== 'CRFM' }"
+          @click="setActiveTab('CRFM')"
         >
-          📋 Remontée CRFM 🔍
+          Remontée CRFM
         </button>
       </div>
     </div>
 
-    <!-- FORMULAIRES -->
+    <!-- ✅ FORMULAIRES UNIQUEMENT APRÈS CLIC -->
     <div
-      v-if="showCrca"
+      v-if="activeTab === 'CRCA'"
       class="fr-mb-5w"
     >
       <div class="fr-fieldset">
         <legend class="fr-fieldset__legend fr-h3">
-          📋 Nouvelle remontée CRCA
+          Nouvelle remontée CRCA
         </legend>
         <CrcaForm
           v-model="crcaFormData"
@@ -226,12 +197,12 @@ function handleCrfmClick () {
     </div>
 
     <div
-      v-if="showCrfm"
+      v-if="activeTab === 'CRFM'"
       class="fr-mb-5w"
     >
       <div class="fr-fieldset">
         <legend class="fr-fieldset__legend fr-h3">
-          📋 Nouvelle remontée CRFM
+          Nouvelle remontée CRFM
         </legend>
         <CrfmForm
           v-model="crfmFormData"
@@ -240,7 +211,7 @@ function handleCrfmClick () {
       </div>
     </div>
 
-    <!-- Status AUTO -->
+    <!-- Status -->
     <div
       v-if="statusMessage"
       class="fr-mt-5w"
@@ -262,7 +233,29 @@ function handleCrfmClick () {
 </template>
 
 <style scoped>
-.w-100 {
-  width: 100%;
+.dsfr-tab-btn {
+  border-radius: 8px !important;
+  margin-bottom: 1rem;
+
+  &.fr-btn--primary {
+    --bg-color: var(--bg-action-high-blue-france) !important;
+    --color-contrast: white;
+  }
+
+  &.fr-btn--secondary {
+    --bg-color: transparent;
+    --border-color: var(--border-action-high-blue-france);
+    --color: var(--text-action-high-blue-france);
+
+    &:hover {
+      --bg-color: var(--bg-action-light-blue-france);
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .dsfr-tab-btn {
+    margin-bottom: 0.5rem;
+  }
 }
 </style>
