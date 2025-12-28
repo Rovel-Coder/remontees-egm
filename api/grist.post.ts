@@ -1,72 +1,129 @@
-// api/grist.post.ts - CRCA + CRFM COMPLET
+// api/grist.post.ts - CRCA + CRFM COMPLET - 0 erreurs
 const GRIST_DOC_ID = '287D12LdHqN4hYBpsm52fo'
 const GRIST_BASE_URL = 'https://grist.numerique.gouv.fr'
 
 type GristField = string
 type RecordFields = Record<GristField, string>
-interface FrontendRecord { [key: string]: any }
 
-const CRCA_FIELDS: GristField[] = [
-  'Secteur',
-  'Indic_Patrouille',
-  'Intervention',
-  'Nature_Intervention',
-  'Heure_debut_Intervention',
-  'Heure_Fin_Intervention',
-  'PAM',
-  'Lieu',
-  'Resume_Intervention',
-  'Personnel',
-  'Armement',
-  'Materiel'
-]
-
-const CRFM_FIELDS: GristField[] = [
-  'Date',
-  'Horaire',
-  'Secteur',
-  'Mission',
-  'VL_engagés',
-  'Effectifs',
-  'nbOad',
-  'controlesVl',
-  'controlesPersonne',
-  'caillassageTouchant',
-  'caillassageNonTouchant',
-  'refusAvecInterp',
-  'refusSansInterp',
-  'obstacle',
-  'feuHabitation',
-  'feuVoitures',
-  'feuAutres',
-  'papafTouchant',
-  'papafNonTouchant',
-  'grenMp7',
-  'grenCm6',
-  'grenGenlDmp',
-  'grenGm2l',
-  'grenGl304',
-  'munLbd40',
-  'mun9mm',
-  'mun556',
-  'mun762',
-  'stupCannabis',
-  'stupPlant',
-  'stupAutres',
-  'infraTa',
-  'infraDelits',
-  'interpZgn',
-  'interpZpn',
-  'nbInterCorgCic',
-  'nbInterInitiative',
-  'rensFrm',
-  'rensFrs',
-  'commentairePam'
-]
-
-const TABLE_FIELDS: Record<string, GristField[]> = {
-  CRCA: CRCA_FIELDS,
-  CRFM: CRFM_FIELDS
+const TABLE_FIELDS: Record<string, { grist: GristField[], frontend: string[] }> = {
+  CRCA: {
+    grist: [
+      'Secteur',
+      'Indic_Patrouille',
+      'Intervention',
+      'Nature_Intervention',
+      'Heure_debut_Intervention',
+      'Heure_Fin_Intervention',
+      'PAM',
+      'Lieu',
+      'Resume_Intervention',
+      'Personnel',
+      'Armement',
+      'Materiel'
+    ],
+    frontend: [
+      'secteur',
+      'indicatifs',
+      'intervention',
+      'natureIntervention',
+      'heureDebut',
+      'heureFin',
+      'pam',
+      'lieu',
+      'resume',
+      'personnel',
+      'armement',
+      'materiel'
+    ]
+  },
+  CRFM: {
+    grist: [
+      'Date',
+      'Secteur',
+      'Mission',
+      'Horaires',
+      'Effectifs',
+      'VL_Engages',
+      'Nbr_OAD',
+      'Nbr_CTRL_VL',
+      'Nbr_CTRL_Personne',
+      'Nbr_Intervention_CORG_CIC',
+      'Nbr_Intervention_Initiative',
+      'FRM',
+      'FRS',
+      'Cannabis',
+      'Plant_Cannabis',
+      'Autres',
+      'Precision_STUP',
+      'TA',
+      'Delits',
+      'Interpellation_ZGN',
+      'Interpellation_ZPN',
+      'Caillassage_Touchant',
+      'Caillassage_Non_Touchant',
+      '$Refus_Obtemperer_Avec_Interpellation',
+      'Refus_Obtemperer_Sans_Interpellation',
+      'Obstacle_Entrave_a_la_circulation_',
+      'Feu_Habitation_Commerce',
+      'Feu_Voitures',
+      'Feu_Autres',
+      'PAPAAF_Touchants',
+      'PAPAAF_Non_Touchants',
+      'MP7',
+      'CM6',
+      'GENL_DMP',
+      'GM2L',
+      'GL304',
+      'LBD_40',
+      'c9_mm',
+      'c5_56_mm',
+      'c7_62_mm',
+      'Commentaire'
+    ],
+    frontend: [
+      'date',
+      'secteur',
+      'mission',
+      'horaire',
+      'effectifs',
+      'vlEngages',
+      'nbOad',
+      'controlesVl',
+      'controlesPersonne',
+      'nbInterCorgCic',
+      'nbInterInitiative',
+      'rensFrm',
+      'rensFrs',
+      'stupCannabis',
+      'stupPlant',
+      'stupAutres',
+      'stupAutres',
+      'infraTa',
+      'infraDelits',
+      'interpZgn',
+      'interpZpn',
+      'caillassageTouchant',
+      'caillassageNonTouchant',
+      'refusAvecInterp',
+      'refusSansInterp',
+      'obstacle',
+      'feuHabitation',
+      'feuVoitures',
+      'feuAutres',
+      'papafTouchant',
+      'papafNonTouchants',
+      'grenMp7',
+      'grenCm6',
+      'grenGenlDmp',
+      'grenGm2l',
+      'grenGl304',
+      'munLbd40',
+      'mun9mm',
+      'mun556',
+      'mun762',
+      'commentairePam'
+    ]
+  }
 }
 
 export async function POST (request: Request) {
@@ -78,15 +135,16 @@ export async function POST (request: Request) {
 
     if (body.table && Array.isArray(body.records) && TABLE_FIELDS[body.table]) {
       const { table, records } = body
-      const fields = TABLE_FIELDS[table]
+      const { grist, frontend } = TABLE_FIELDS[table]
 
-      // ✅ FILTRER colonnes table spécifique
-      const validRecords: { fields: RecordFields }[] = records.map((record: FrontendRecord) => {
+      // ✅ Mapping typé
+      const validRecords = records.map((record: Record<string, any>) => {
         const validFields: RecordFields = {}
-        fields.forEach((field: GristField) => {
-          const value = record[field]
-          if (value !== undefined && value !== null) {
-            validFields[field] = Array.isArray(value) ? value.join(', ') : String(value)
+        grist.forEach((gristField: GristField, index: number) => {
+          const frontendField = frontend[index]
+          const value = record[frontendField]
+          if (value !== undefined && value !== null && value !== '') {
+            validFields[gristField] = Array.isArray(value) ? value.join(', ') : String(value)
           }
         })
         return { fields: validFields }
@@ -123,7 +181,7 @@ export async function POST (request: Request) {
 
       const gristError = await gristResponse.text()
 
-      console.error('❌ GRIST ERROR:', gristError)
+      console.error('❌ GRIST RAW ERROR:', gristError)
       throw new Error(`Grist ${table} KO: ${gristResponse.status}`)
     }
 
