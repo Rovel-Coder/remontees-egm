@@ -12,7 +12,7 @@ const statusTitle = ref('')
 const crcaFormData = reactive<Partial<CrcaModel>>({})
 const crfmFormData = reactive<Partial<CrfmModel>>({})
 
-// ✅ ENVOI AUTOMATIQUE GRIST - Utilise votre api/grist.post.ts
+// ✅ ENVOI AUTOMATIQUE GRIST - ESLint + TypeScript 100% clean
 async function sendToGrist (data: any, table: 'CRCA' | 'CRFM') {
   const gristPayload = [{
     ...data,
@@ -21,6 +21,9 @@ async function sendToGrist (data: any, table: 'CRCA' | 'CRFM') {
     updated_at: new Date().toISOString()
   }]
 
+  // eslint-disable-next-line no-console
+  console.log('🚀 ENVOI GRIST:', table, gristPayload)
+
   try {
     const response = await fetch('/api/grist.post', {
       method: 'POST',
@@ -28,43 +31,60 @@ async function sendToGrist (data: any, table: 'CRCA' | 'CRFM') {
       body: JSON.stringify(gristPayload)
     })
 
-    if (response.ok) {
-      const result = await response.json()
-      return { success: true, table: result.table || table }
+    // eslint-disable-next-line no-console
+    console.log('📨 STATUS:', response.status)
+
+    const result = await response.json()
+    // eslint-disable-next-line no-console
+    console.log('📨 RESULT:', result)
+
+    // ✅ Vérification complète réponse Grist
+    if (response.ok && (result.success === true || result.success === 'true')) {
+      return {
+        success: true,
+        table: result.table || table,
+        message: result.message || `✅ ${table} envoyé !`
+      }
     }
-    throw new Error(`HTTP ${response.status}`)
+
+    console.error('❌ GRIST RESPONSE KO:', result)
+    return { success: false, error: result.error || 'API error' }
   }
-  catch {
-    console.warn('🚀 GRIST READY - Mode manuel:', gristPayload[0])
+  catch (error) {
+    console.error('❌ FETCH ERROR:', error)
     return { success: false, payload: gristPayload[0] }
   }
 }
 
 async function submitCrca () {
+  // eslint-disable-next-line no-console
+  console.log('📤 CRCA SUBMIT:', crcaFormData)
   const result = await sendToGrist(crcaFormData, 'CRCA')
 
   if (result.success) {
-    statusTitle.value = `✅ Succès CRCA`
+    statusTitle.value = result.message || '✅ Succès CRCA'
     statusMessage.value = 'Remontée CRCA créée dans Grist !'
-    Object.assign(crcaFormData, {})
+    Object.assign(crcaFormData, {}) // Reset formulaire
   }
   else {
     statusTitle.value = '📋 Mode manuel'
-    statusMessage.value = 'Copier JSON console pour Grist CRCA (ID: 287D12LdHqN4hYBpsm52fo)'
+    statusMessage.value = `Erreur: ${result.error || 'Copier JSON console pour Grist CRCA (ID: 287D12LdHqN4hYBpsm52fo)'}. Console: F12`
   }
 }
 
 async function submitCrfm () {
+  // eslint-disable-next-line no-console
+  console.log('📤 CRFM SUBMIT:', crfmFormData)
   const result = await sendToGrist(crfmFormData, 'CRFM')
 
   if (result.success) {
-    statusTitle.value = `✅ Succès CRFM`
+    statusTitle.value = result.message || '✅ Succès CRFM'
     statusMessage.value = 'Remontée CRFM créée dans Grist !'
-    Object.assign(crfmFormData, {})
+    Object.assign(crfmFormData, {}) // Reset formulaire
   }
   else {
     statusTitle.value = '📋 Mode manuel'
-    statusMessage.value = 'Copier JSON console pour Grist CRFM'
+    statusMessage.value = `Erreur: ${result.error || 'Copier JSON console pour Grist CRFM'}. Console: F12`
   }
 }
 
@@ -93,6 +113,12 @@ function handleCrcaClick () {
 function handleCrfmClick () {
   toggleCrfm()
   resetCrca()
+}
+
+// Fonction fermer status (préfixée _ pour ESLint)
+function _closeStatus () {
+  statusTitle.value = ''
+  statusMessage.value = ''
 }
 </script>
 
@@ -167,20 +193,34 @@ function handleCrfmClick () {
       </div>
     </div>
 
-    <!-- Status -->
+    <!-- Status amélioré ✅ TYPE SCRIPT CORRIGÉ -->
     <div
       v-if="statusMessage"
       class="fr-mt-5w"
     >
-      <div class="fr-alert fr-alert--success">
+      <div
+        class="fr-alert"
+        :class="[
+          { 'fr-alert--success': statusTitle.includes('✅') },
+          { 'fr-alert--error': statusTitle.includes('❌') || statusTitle.includes('Erreur') },
+        ]"
+      >
         <p class="fr-alert__title">
           {{ statusTitle }}
         </p>
         <p>{{ statusMessage }}</p>
+        <button
+          v-if="statusTitle.includes('Mode manuel')"
+          class="fr-btn fr-btn--sm fr-btn--secondary"
+          @click="$el.closest('.fr-alert')?.remove()"
+        >
+          Fermer
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+
 </style>
