@@ -1,79 +1,37 @@
-import type { CrcaModel, CrfmModel } from '@/types' // 👈 AJOUTEZ CETTE LIGNE
-
-const GRIST_DOC_ID = import.meta.env.VITE_GRIST_DOC_ID as string
-const GRIST_API_KEY = import.meta.env.VITE_GRIST_API_KEY as string
-const GRIST_BASE_URL = `https://docs.getgrist.com/${GRIST_DOC_ID}/api/v1`
+import type { CrcaModel, CrfmModel } from '../types'
 
 class GristService {
-  private headers = new Headers({
-    'Authorization': `Bearer ${GRIST_API_KEY}`,
-    'Content-Type': 'application/json'
-  })
+  private isProd = import.meta.env.MODE === 'production'
 
-  async init (): Promise<void> {
-    if (!GRIST_DOC_ID || !GRIST_API_KEY) {
-      throw new Error('VITE_GRIST_DOC_ID ou VITE_GRIST_API_KEY manquant dans .env')
-    }
+  // DEV: localStorage UNIQUEMENT
+  // PROD: proxy serveur (futur /api/grist)
+  private saveDraft (type: 'CRCA' | 'CRFM', data: any): void {
+    localStorage.setItem(`${type.toLowerCase()}_brouillon`, JSON.stringify(data, null, 2))
   }
 
-  async submitCrca (data: Partial<CrcaModel>): Promise<any> {
-    const record = {
-      ...data,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+  async submitCrca (data: Partial<CrcaModel>): Promise<{ success: boolean, message: string }> {
+    this.saveDraft('CRCA', data)
+
+    if (!this.isProd) {
+      console.warn('📋 DEV: CRCA brouillon localStorage')
+      return { success: true, message: '💾 Brouillon local - Copier Grist manuellement' }
     }
 
-    const response = await fetch(`${GRIST_BASE_URL}/tables/CRCA/records/`, {
-      method: 'POST',
-      headers: this.headers,
-      body: JSON.stringify([record])
-    })
-
-    if (!response.ok) {
-      throw new Error(`Grist CRCA ${response.status}: ${response.statusText}`)
-    }
-
-    return await response.json()
+    // PROD: Message "À copier dans Grist" (sécurisé)
+    console.warn('🔒 PROD: Données prêtes - Copier dans Grist (ID: 287D12LdHqN4hYBpsm52fo)')
+    return { success: true, message: '✅ PROD: Copier brouillon dans Grist manuellement' }
   }
 
-  async submitCrfm (data: Partial<CrfmModel>): Promise<any> {
-    const record = {
-      ...data,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+  async submitCrfm (data: Partial<CrfmModel>): Promise<{ success: boolean, message: string }> {
+    this.saveDraft('CRFM', data)
+
+    if (!this.isProd) {
+      console.warn('📋 DEV: CRFM brouillon localStorage')
+      return { success: true, message: '💾 Brouillon local - Copier Grist manuellement' }
     }
 
-    const response = await fetch(`${GRIST_BASE_URL}/tables/CRFM/records/`, {
-      method: 'POST',
-      headers: this.headers,
-      body: JSON.stringify([record])
-    })
-
-    if (!response.ok) {
-      throw new Error(`Grist CRFM ${response.status}: ${response.statusText}`)
-    }
-
-    return await response.json()
-  }
-
-  async loadDrafts (): Promise<{ crca: any[] | null, crfm: any[] | null }> {
-    try {
-      const [crcaRes, crfmRes] = await Promise.all([
-        fetch(`${GRIST_BASE_URL}/tables/CRCA/records/`, { headers: this.headers }),
-        fetch(`${GRIST_BASE_URL}/tables/CRFM/records/`, { headers: this.headers })
-      ])
-
-      const crcaData = crcaRes.ok ? await crcaRes.json() : null
-      const crfmData = crfmRes.ok ? await crfmRes.json() : null
-
-      return {
-        crca: crcaData?.rows?.[0] || null,
-        crfm: crfmData?.rows?.[0] || null
-      }
-    }
-    catch {
-      return { crca: null, crfm: null }
-    }
+    console.warn('🔒 PROD: Données prêtes - Copier dans Grist (ID: 287D12LdHqN4hYBpsm52fo)')
+    return { success: true, message: '✅ PROD: Copier brouillon dans Grist manuellement' }
   }
 }
 
