@@ -106,6 +106,23 @@ async function sendCrfmToGrist (data: Partial<CrfmModel>): Promise<{ success: tr
   throw new Error(result.error || 'Grist CRFM KO')
 }
 
+// 🔍 DEBUG CRFM - À SUPPRIMER APRÈS TEST
+async function submitCrfm () {
+  console.warn('🔍 DEBUG CRFM - Données formulaire:', JSON.stringify(crfmFormData, null, 2))
+
+  try {
+    const result = await sendCrfmToGrist(crfmFormData)
+    statusTitle.value = result.message
+    statusMessage.value = `✅ ${result.table} → Grist numerique.gouv.fr`
+    Object.assign(crfmFormData, {}) // Reset formulaire
+  }
+  catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
+    statusTitle.value = '❌ Erreur CRFM'
+    statusMessage.value = errorMessage
+  }
+}
+
 // ✅ SUBMIT CRCA
 async function submitCrca () {
   try {
@@ -121,21 +138,6 @@ async function submitCrca () {
   catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
     statusTitle.value = '❌ Erreur CRCA'
-    statusMessage.value = errorMessage
-  }
-}
-
-// ✅ SUBMIT CRFM
-async function submitCrfm () {
-  try {
-    const result = await sendCrfmToGrist(crfmFormData)
-    statusTitle.value = result.message
-    statusMessage.value = `✅ ${result.table} → Grist numerique.gouv.fr`
-    Object.assign(crfmFormData, {}) // Reset
-  }
-  catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
-    statusTitle.value = '❌ Erreur CRFM'
     statusMessage.value = errorMessage
   }
 }
@@ -202,7 +204,7 @@ function handleCrfmClick () {
           class="fr-btn fr-btn--secondary w-100"
           @click="handleCrfmClick"
         >
-          📋 Remontée CRFM ✅
+          📋 Remontée CRFM 🔍
         </button>
       </div>
     </div>
