@@ -12,14 +12,13 @@ const statusTitle = ref('')
 const crcaFormData = reactive<Partial<CrcaModel>>({})
 const crfmFormData = reactive<Partial<CrfmModel>>({})
 
-// ✅ GRIST CRCA - TABLE EXPLICITE "CRCA"
-async function sendCrcaToGrist (data: Partial<CrcaModel>): Promise<{ success: true, message: string }> {
-  // FORMAT GRIST : { table: "CRCA", records: [...] }
+// ✅ CRCA → Table CRCA (FONCTIONNEL)
+async function sendCrcaToGrist (data: Partial<CrcaModel>): Promise<{ success: true, message: string, table: string }> {
   const gristPayload = {
-    table: 'CRCA', // ← FORCE TABLE CRCA
+    table: 'CRCA',
     records: [{
       Secteur: data.secteur || '',
-      Indic_Patrouille: (data.indicatifs || []).join(', '),
+      Indic_Patrouille: Array.isArray(data.indicatifs) ? data.indicatifs.join(', ') : '',
       Intervention: data.intervention || '',
       Nature_Intervention: data.natureIntervention || '',
       Heure_debut_Intervention: data.heureDebut || '',
@@ -29,14 +28,9 @@ async function sendCrcaToGrist (data: Partial<CrcaModel>): Promise<{ success: tr
       Resume_Intervention: data.resume || '',
       Personnel: data.personnel || '',
       Armement: data.armement || '',
-      Materiel: data.materiel || '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      Materiel: data.materiel || ''
     }]
   }
-
-  // eslint-disable-next-line no-console
-  console.log('🚀 GRIST CRCA → TABLE CRCA:', JSON.stringify(gristPayload, null, 2))
 
   const response = await fetch('/api/grist.post', {
     method: 'POST',
@@ -45,30 +39,66 @@ async function sendCrcaToGrist (data: Partial<CrcaModel>): Promise<{ success: tr
   })
 
   const result = await response.json()
-  // eslint-disable-next-line no-console
-  console.log('📨 GRIST CRCA RESPONSE:', result)
-
   if (response.ok && result.success) {
-    return { success: true, message: `✅ CRCA envoyé table CRCA !` }
+    return { success: true, message: result.message || '✅ CRCA envoyé !', table: 'CRCA' }
   }
-  throw new Error(result.error || `Grist table CRCA KO (status: ${response.status})`)
+  throw new Error(result.error || 'Grist CRCA KO')
 }
 
-// ✅ GRIST CRFM - TABLE EXPLICITE "CRFM"
-async function sendCrfmToGrist (data: Partial<CrfmModel>): Promise<{ success: true, message: string }> {
+// ✅ CRFM → Table CRFM (Mapping EXACT)
+async function sendCrfmToGrist (data: Partial<CrfmModel>): Promise<{ success: true, message: string, table: string }> {
+  // eslint-disable-next-line no-console
+  console.log('🔍 CRFM RAW DATA:', JSON.parse(JSON.stringify(data)))
+
   const gristPayload = {
-    table: 'CRFM', // ← FORCE TABLE CRFM
+    table: 'CRFM',
     records: [{
       Date: data.date || '',
       Secteur: data.secteur || '',
-      Horaire: data.horaire || '',
       Mission: data.mission || '',
-      VL_engagés: data.vlEngages || 0,
-      Effectifs: data.effectifs || 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      Horaires: data.horaire || '',
+      Effectifs: data.effectifs?.toString() || '',
+      VL_Engages: data.vlEngages?.toString() || '',
+      Nbr_OAD: data.nbOad?.toString() || '',
+      Nbr_CTRL_VL: data.controlesVl?.toString() || '',
+      Nbr_CTRL_Personne: data.controlesPersonne?.toString() || '',
+      Nbr_Intervention_CORG_CIC: data.nbInterCorgCic?.toString() || '',
+      Nbr_Intervention_Initiative: data.nbInterInitiative?.toString() || '',
+      FRM: data.rensFrm?.toString() || '',
+      FRS: data.rensFrs?.toString() || '',
+      Cannabis: data.stupCannabis?.toString() || '',
+      Plant_Cannabis: data.stupPlant?.toString() || '',
+      Autres: data.stupAutres || '',
+      Precision_STUP: data.stupAutres || '',
+      TA: data.infraTa?.toString() || '',
+      Delits: data.infraDelits?.toString() || '',
+      Interpellation_ZGN: data.interpZgn?.toString() || '',
+      Interpellation_ZPN: data.interpZpn?.toString() || '',
+      Caillassage_Touchant: data.caillassageTouchant?.toString() || '',
+      Caillassage_Non_Touchant: data.caillassageNonTouchant?.toString() || '',
+      $Refus_Obtemperer_Avec_Interpellation: data.refusAvecInterp?.toString() || '',
+      Refus_Obtemperer_Sans_Interpellation: data.refusSansInterp?.toString() || '',
+      Obstacle_Entrave_a_la_circulation_: data.obstacle?.toString() || '',
+      Feu_Habitation_Commerce: data.feuHabitation?.toString() || '',
+      Feu_Voitures: data.feuVoitures?.toString() || '',
+      Feu_Autres: data.feuAutres?.toString() || '',
+      PAPAAF_Touchants: data.papafTouchant?.toString() || '',
+      PAPAAF_Non_Touchants: data.papafNonTouchant?.toString() || '',
+      MP7: data.grenMp7?.toString() || '',
+      CM6: data.grenCm6?.toString() || '',
+      GENL_DMP: data.grenGenlDmp?.toString() || '',
+      GM2L: data.grenGm2l?.toString() || '',
+      GL304: data.grenGl304?.toString() || '',
+      LBD_40: data.munLbd40?.toString() || '',
+      c9_mm: data.mun9mm?.toString() || '',
+      c5_56_mm: data.mun556?.toString() || '',
+      c7_62_mm: data.mun762?.toString() || '',
+      Commentaire: data.commentairePam || ''
     }]
   }
+
+  // eslint-disable-next-line no-console
+  console.log('🚀 CRFM PAYLOAD:', JSON.stringify(gristPayload.records[0], null, 2))
 
   const response = await fetch('/api/grist.post', {
     method: 'POST',
@@ -77,43 +107,47 @@ async function sendCrfmToGrist (data: Partial<CrfmModel>): Promise<{ success: tr
   })
 
   const result = await response.json()
+  // eslint-disable-next-line no-console
+  console.log('📨 CRFM RESULT:', result)
+
   if (response.ok && result.success) {
-    return { success: true, message: `✅ CRFM envoyé table CRFM !` }
+    return { success: true, message: result.message || '✅ CRFM envoyé !', table: 'CRFM' }
   }
-  throw new Error(result.error || `Grist table CRFM KO (status: ${response.status})`)
+  throw new Error(result.error || 'Grist CRFM KO')
 }
 
 async function submitCrca () {
   try {
+    // Validation
     if (!crcaFormData.secteur || (crcaFormData.indicatifs?.length || 0) === 0) {
       throw new Error('Secteur + 1 indicatif obligatoires')
     }
 
-    await sendCrcaToGrist(crcaFormData)
+    const result = await sendCrcaToGrist(crcaFormData)
 
-    statusTitle.value = '✅ Succès CRCA'
-    statusMessage.value = 'Remontée CRCA → Table CRCA Grist !'
-    Object.assign(crcaFormData, {})
+    statusTitle.value = result.message
+    statusMessage.value = `✅ ${result.table} → Grist numerique.gouv.fr`
+    Object.assign(crcaFormData, {}) // Reset
   }
   catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
     statusTitle.value = '❌ Erreur CRCA'
-    statusMessage.value = `Table CRCA: ${errorMessage}`
+    statusMessage.value = errorMessage
   }
 }
 
 async function submitCrfm () {
   try {
-    await sendCrfmToGrist(crfmFormData)
+    const result = await sendCrfmToGrist(crfmFormData)
 
-    statusTitle.value = '✅ Succès CRFM'
-    statusMessage.value = 'Remontée CRFM → Table CRFM Grist !'
-    Object.assign(crfmFormData, {})
+    statusTitle.value = result.message
+    statusMessage.value = `✅ ${result.table} → Grist numerique.gouv.fr`
+    Object.assign(crfmFormData, {}) // Reset
   }
   catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
     statusTitle.value = '❌ Erreur CRFM'
-    statusMessage.value = `Table CRFM: ${errorMessage}`
+    statusMessage.value = errorMessage
   }
 }
 
@@ -164,14 +198,14 @@ function handleCrfmClick () {
       </div>
     </div>
 
-    <!-- BOUTONS DSFR -->
+    <!-- BOUTONS DSFR CENTRÉS -->
     <div class="fr-grid-row fr-grid-row--center fr-grid-row--gutters fr-mt-4w fr-mb-5w">
       <div class="fr-col-12 fr-col-md-5 fr-col-lg-4">
         <button
           class="fr-btn fr-btn--primary w-100"
           @click="handleCrcaClick"
         >
-          📋 Remontée CRCA → Table CRCA
+          📋 Remontée CRCA ✅
         </button>
       </div>
       <div class="fr-col-12 fr-col-md-5 fr-col-lg-4">
@@ -179,7 +213,7 @@ function handleCrfmClick () {
           class="fr-btn fr-btn--secondary w-100"
           @click="handleCrfmClick"
         >
-          📋 Remontée CRFM → Table CRFM
+          📋 Remontée CRFM
         </button>
       </div>
     </div>
@@ -237,5 +271,7 @@ function handleCrfmClick () {
 </template>
 
 <style scoped>
-
+.w-100 {
+  width: 100%;
+}
 </style>
