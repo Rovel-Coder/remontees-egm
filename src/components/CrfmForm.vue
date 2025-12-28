@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// ✅ AJOUTE ÇA en haut de CrfmForm.vue
 import {
   DsfrButton,
   DsfrInput,
@@ -65,12 +64,12 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: Partial<CrfmModel>): void
-  (e: 'submit'): void
+  'update:modelValue': [value: Partial<CrfmModel>]
+  'submit': []
 }>()
 
-const model = computed<Partial<CrfmModel>>({
-  get: () => ({
+const model = computed({
+  get: (): Partial<CrfmModel> => ({
     date: '',
     horaire: '' as Horaire,
     secteur: '' as Secteur,
@@ -113,21 +112,8 @@ const model = computed<Partial<CrfmModel>>({
     commentairePam: '',
     ...props.modelValue,
   }),
-  set: value => emit('update:modelValue', value),
+  set: (value: Partial<CrfmModel>) => emit('update:modelValue', value),
 })
-
-function updateField<K extends keyof CrfmModel> (key: K, value: CrfmModel[K]) {
-  model.value = { ...model.value, [key]: value }
-}
-
-function parseNumber (value: string): number | null {
-  if (value === '') {
-    return null
-  }
-
-  const n = Number(value)
-  return Number.isNaN(n) ? null : n
-}
 
 function onSubmit (event: Event) {
   event.preventDefault()
@@ -145,31 +131,28 @@ function onSubmit (event: Event) {
     <div class="fr-grid-row fr-grid-row--gutters fr-mb-4w">
       <div class="fr-col-12 fr-col-md-3">
         <DsfrInput
-          :model-value="model.date ?? ''"
+          v-model="model.date"
           type="date"
           label="Date *"
           label-visible
           required
-          @update:model-value="updateField('date', $event)"
         />
       </div>
-
       <div class="fr-col-12 fr-col-md-3">
         <DsfrRadioButtonSet
-          :model-value="model.horaire"
+          v-model="model.horaire"
           legend="Horaires *"
           :options="[
             { label: '6h - 14h', value: '6-14' },
             { label: '14h - 22h', value: '14-22' },
             { label: '22h - 6h', value: '22-6' },
           ]"
-          @update:model-value="updateField('horaire', $event as Horaire)"
+          required
         />
       </div>
-
       <div class="fr-col-12 fr-col-md-3">
         <DsfrRadioButtonSet
-          :model-value="model.secteur"
+          v-model="model.secteur"
           legend="Secteur *"
           :options="[
             { label: 'ALPHA', value: 'ALPHA' },
@@ -177,13 +160,12 @@ function onSubmit (event: Event) {
             { label: 'CHARLIE', value: 'CHARLIE' },
             { label: 'DELTA', value: 'DELTA' },
           ]"
-          @update:model-value="updateField('secteur', $event as Secteur)"
+          required
         />
       </div>
-
       <div class="fr-col-12 fr-col-md-3">
         <DsfrRadioButtonSet
-          :model-value="model.mission"
+          v-model="model.mission"
           legend="Mission *"
           :options="[
             { label: 'CTRZ', value: 'CTRZ' },
@@ -192,7 +174,7 @@ function onSubmit (event: Event) {
             { label: 'SECURISATION', value: 'SECURISATION' },
             { label: 'RI', value: 'RI' },
           ]"
-          @update:model-value="updateField('mission', $event as Mission)"
+          required
         />
       </div>
     </div>
@@ -201,36 +183,31 @@ function onSubmit (event: Event) {
     <div class="fr-grid-row fr-grid-row--gutters fr-mb-4w">
       <div class="fr-col-12 fr-col-md-4">
         <DsfrInput
-          :model-value="model.vlEngages ?? ''"
+          v-model="model.vlEngages"
           type="number"
           min="0"
           label="VL engagés *"
           label-visible
           required
-          @update:model-value="updateField('vlEngages', parseNumber($event))"
         />
       </div>
-
       <div class="fr-col-12 fr-col-md-4">
         <DsfrInput
-          :model-value="model.effectifs ?? ''"
+          v-model="model.effectifs"
           type="number"
           min="0"
           label="Effectifs *"
           label-visible
           required
-          @update:model-value="updateField('effectifs', parseNumber($event))"
         />
       </div>
-
       <div class="fr-col-12 fr-col-md-4">
         <DsfrInput
-          :model-value="model.nbOad ?? ''"
+          v-model="model.nbOad"
           type="number"
           min="0"
           label="Nombre d'OAD"
           label-visible
-          @update:model-value="updateField('nbOad', parseNumber($event))"
         />
       </div>
     </div>
@@ -243,22 +220,20 @@ function onSubmit (event: Event) {
       <div class="fr-grid-row fr-grid-row--gutters">
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.controlesVl ?? ''"
+            v-model="model.controlesVl"
             type="number"
             min="0"
             label="VL"
             label-visible
-            @update:model-value="updateField('controlesVl', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.controlesPersonne ?? ''"
+            v-model="model.controlesPersonne"
             type="number"
             min="0"
             label="Personne"
             label-visible
-            @update:model-value="updateField('controlesPersonne', parseNumber($event))"
           />
         </div>
       </div>
@@ -272,22 +247,20 @@ function onSubmit (event: Event) {
       <div class="fr-grid-row fr-grid-row--gutters">
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.nbInterCorgCic ?? ''"
+            v-model="model.nbInterCorgCic"
             type="number"
             min="0"
             label="CORG / CIC"
             label-visible
-            @update:model-value="updateField('nbInterCorgCic', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.nbInterInitiative ?? ''"
+            v-model="model.nbInterInitiative"
             type="number"
             min="0"
             label="Initiative"
             label-visible
-            @update:model-value="updateField('nbInterInitiative', parseNumber($event))"
           />
         </div>
       </div>
@@ -301,22 +274,20 @@ function onSubmit (event: Event) {
       <div class="fr-grid-row fr-grid-row--gutters">
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.rensFrm ?? ''"
+            v-model="model.rensFrm"
             type="number"
             min="0"
             label="FRM"
             label-visible
-            @update:model-value="updateField('rensFrm', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.rensFrs ?? ''"
+            v-model="model.rensFrs"
             type="number"
             min="0"
             label="FRS"
             label-visible
-            @update:model-value="updateField('rensFrs', parseNumber($event))"
           />
         </div>
       </div>
@@ -330,30 +301,27 @@ function onSubmit (event: Event) {
       <div class="fr-grid-row fr-grid-row--gutters fr-mb-2w">
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.stupCannabis ?? ''"
+            v-model="model.stupCannabis"
             type="number"
             min="0"
             label="Cannabis"
             label-visible
-            @update:model-value="updateField('stupCannabis', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.stupPlant ?? ''"
+            v-model="model.stupPlant"
             type="number"
             min="0"
             label="Plant cannabis"
             label-visible
-            @update:model-value="updateField('stupPlant', parseNumber($event))"
           />
         </div>
       </div>
       <DsfrInput
-        :model-value="model.stupAutres"
+        v-model="model.stupAutres"
         label="Si autres, précisez"
         label-visible
-        @update:model-value="updateField('stupAutres', $event)"
       />
     </section>
 
@@ -365,22 +333,20 @@ function onSubmit (event: Event) {
       <div class="fr-grid-row fr-grid-row--gutters">
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.infraTa ?? ''"
+            v-model="model.infraTa"
             type="number"
             min="0"
             label="TA"
             label-visible
-            @update:model-value="updateField('infraTa', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.infraDelits ?? ''"
+            v-model="model.infraDelits"
             type="number"
             min="0"
             label="Délits"
             label-visible
-            @update:model-value="updateField('infraDelits', parseNumber($event))"
           />
         </div>
       </div>
@@ -394,22 +360,20 @@ function onSubmit (event: Event) {
       <div class="fr-grid-row fr-grid-row--gutters">
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.interpZgn ?? ''"
+            v-model="model.interpZgn"
             type="number"
             min="0"
             label="ZGN"
             label-visible
-            @update:model-value="updateField('interpZgn', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.interpZpn ?? ''"
+            v-model="model.interpZpn"
             type="number"
             min="0"
             label="ZPN"
             label-visible
-            @update:model-value="updateField('interpZpn', parseNumber($event))"
           />
         </div>
       </div>
@@ -423,22 +387,20 @@ function onSubmit (event: Event) {
       <div class="fr-grid-row fr-grid-row--gutters">
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.caillassageTouchant ?? ''"
+            v-model="model.caillassageTouchant"
             type="number"
             min="0"
             label="Caillassage touchant"
             label-visible
-            @update:model-value="updateField('caillassageTouchant', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.caillassageNonTouchant ?? ''"
+            v-model="model.caillassageNonTouchant"
             type="number"
             min="0"
             label="Caillassage non touchant"
             label-visible
-            @update:model-value="updateField('caillassageNonTouchant', parseNumber($event))"
           />
         </div>
       </div>
@@ -452,32 +414,29 @@ function onSubmit (event: Event) {
       <div class="fr-grid-row fr-grid-row--gutters fr-mb-2w">
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.refusAvecInterp ?? ''"
+            v-model="model.refusAvecInterp"
             type="number"
             min="0"
             label="Avec interpellation"
             label-visible
-            @update:model-value="updateField('refusAvecInterp', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.refusSansInterp ?? ''"
+            v-model="model.refusSansInterp"
             type="number"
             min="0"
             label="Sans interpellation"
             label-visible
-            @update:model-value="updateField('refusSansInterp', parseNumber($event))"
           />
         </div>
       </div>
       <DsfrInput
-        :model-value="model.obstacle ?? ''"
+        v-model="model.obstacle"
         type="number"
         min="0"
         label="Obstacle (Entrave à la circulation)"
         label-visible
-        @update:model-value="updateField('obstacle', parseNumber($event))"
       />
     </section>
 
@@ -489,32 +448,29 @@ function onSubmit (event: Event) {
       <div class="fr-grid-row fr-grid-row--gutters">
         <div class="fr-col-12 fr-col-md-4">
           <DsfrInput
-            :model-value="model.feuHabitation ?? ''"
+            v-model="model.feuHabitation"
             type="number"
             min="0"
             label="Habitation / Commerce"
             label-visible
-            @update:model-value="updateField('feuHabitation', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-4">
           <DsfrInput
-            :model-value="model.feuVoitures ?? ''"
+            v-model="model.feuVoitures"
             type="number"
             min="0"
             label="Voitures"
             label-visible
-            @update:model-value="updateField('feuVoitures', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-4">
           <DsfrInput
-            :model-value="model.feuAutres ?? ''"
+            v-model="model.feuAutres"
             type="number"
             min="0"
             label="Autres"
             label-visible
-            @update:model-value="updateField('feuAutres', parseNumber($event))"
           />
         </div>
       </div>
@@ -528,22 +484,20 @@ function onSubmit (event: Event) {
       <div class="fr-grid-row fr-grid-row--gutters">
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.papafTouchant ?? ''"
+            v-model="model.papafTouchant"
             type="number"
             min="0"
             label="Touchants"
             label-visible
-            @update:model-value="updateField('papafTouchant', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.papafNonTouchant ?? ''"
+            v-model="model.papafNonTouchant"
             type="number"
             min="0"
             label="Non touchants"
             label-visible
-            @update:model-value="updateField('papafNonTouchant', parseNumber($event))"
           />
         </div>
       </div>
@@ -557,54 +511,49 @@ function onSubmit (event: Event) {
       <div class="fr-grid-row fr-grid-row--gutters fr-mb-2w">
         <div class="fr-col-12 fr-col-md-4">
           <DsfrInput
-            :model-value="model.grenMp7 ?? ''"
+            v-model="model.grenMp7"
             type="number"
             min="0"
             label="MP7"
             label-visible
-            @update:model-value="updateField('grenMp7', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-4">
           <DsfrInput
-            :model-value="model.grenCm6 ?? ''"
+            v-model="model.grenCm6"
             type="number"
             min="0"
             label="CM6"
             label-visible
-            @update:model-value="updateField('grenCm6', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-4">
           <DsfrInput
-            :model-value="model.grenGenlDmp ?? ''"
+            v-model="model.grenGenlDmp"
             type="number"
             min="0"
             label="GENL / DMP"
             label-visible
-            @update:model-value="updateField('grenGenlDmp', parseNumber($event))"
           />
         </div>
       </div>
       <div class="fr-grid-row fr-grid-row--gutters">
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.grenGm2l ?? ''"
+            v-model="model.grenGm2l"
             type="number"
             min="0"
             label="GM2L"
             label-visible
-            @update:model-value="updateField('grenGm2l', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.grenGl304 ?? ''"
+            v-model="model.grenGl304"
             type="number"
             min="0"
             label="GL304"
             label-visible
-            @update:model-value="updateField('grenGl304', parseNumber($event))"
           />
         </div>
       </div>
@@ -618,44 +567,40 @@ function onSubmit (event: Event) {
       <div class="fr-grid-row fr-grid-row--gutters fr-mb-2w">
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.munLbd40 ?? ''"
+            v-model="model.munLbd40"
             type="number"
             min="0"
             label="LBD 40"
             label-visible
-            @update:model-value="updateField('munLbd40', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.mun9mm ?? ''"
+            v-model="model.mun9mm"
             type="number"
             min="0"
             label="9 mm"
             label-visible
-            @update:model-value="updateField('mun9mm', parseNumber($event))"
           />
         </div>
       </div>
       <div class="fr-grid-row fr-grid-row--gutters">
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.mun556 ?? ''"
+            v-model="model.mun556"
             type="number"
             min="0"
             label="5,56 mm"
             label-visible
-            @update:model-value="updateField('mun556', parseNumber($event))"
           />
         </div>
         <div class="fr-col-12 fr-col-md-6">
           <DsfrInput
-            :model-value="model.mun762 ?? ''"
+            v-model="model.mun762"
             type="number"
             min="0"
             label="7,62 mm"
             label-visible
-            @update:model-value="updateField('mun762', parseNumber($event))"
           />
         </div>
       </div>
@@ -664,12 +609,11 @@ function onSubmit (event: Event) {
     <!-- 13. Commentaire -->
     <section class="fr-mb-4w">
       <DsfrInput
-        :model-value="model.commentairePam"
+        v-model="model.commentairePam"
         type="textarea"
         label="Commentaire (PAM obligatoire) *"
         label-visible
         required
-        @update:model-value="updateField('commentairePam', $event)"
       />
     </section>
 

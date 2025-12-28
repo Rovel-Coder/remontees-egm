@@ -1,12 +1,11 @@
 <script setup lang="ts">
-// ✅ IMPORTS DSFR AJOUTÉS
 import {
   DsfrButton,
   DsfrCheckbox,
   DsfrInput,
   DsfrRadioButtonSet
 } from '@gouvminint/vue-dsfr'
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 type Secteur = 'ALPHA' | 'BRAVO' | 'CHARLIE' | 'DELTA' | ''
 type Intervention = 'INITIATIVE' | 'CIC' | ''
@@ -32,51 +31,50 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: Partial<CrcaModel>): void
-  (e: 'submit'): void
+  'update:modelValue': [value: Partial<CrcaModel>]
+  'submit': []
 }>()
 
-const model = computed<Partial<CrcaModel>>({
-  get: () => ({
-    secteur: '' as Secteur,
-    indicatifs: [] as string[],
-    intervention: '' as Intervention,
-    natureIntervention: '',
-    heureDebut: '',
-    heureFin: '',
-    lieu: '',
-    pam: '' as Pam,
-    personnel: '',
-    armement: '',
-    materiel: '',
-    resume: '',
-    ...props.modelValue,
-  }),
-  set: value => emit('update:modelValue', value),
+const model = ref<Partial<CrcaModel>>({
+  secteur: '' as Secteur,
+  indicatifs: [],
+  intervention: '' as Intervention,
+  natureIntervention: '',
+  heureDebut: '',
+  heureFin: '',
+  lieu: '',
+  pam: '' as Pam,
+  personnel: '',
+  armement: '',
+  materiel: '',
+  resume: '',
+  ...props.modelValue,
 })
 
-function updateField<K extends keyof CrcaModel> (key: K, value: CrcaModel[K]) {
-  model.value = { ...model.value, [key]: value }
-}
+watch(() => props.modelValue, (newVal) => {
+  model.value = { ...model.value, ...newVal }
+}, { deep: true })
+
+// Auto-emit sur chaque changement
+watch(model, (newVal) => {
+  emit('update:modelValue', newVal)
+}, { deep: true })
 
 function updateIndicatifs (value: string, checked: boolean) {
   const currentIndicatifs = model.value.indicatifs || []
   const newIndicatifs = checked
     ? [...currentIndicatifs, value]
     : currentIndicatifs.filter(i => i !== value)
-  updateField('indicatifs' as const, newIndicatifs)
+  model.value.indicatifs = newIndicatifs
 }
 
 function formatHeureOnBlur (value: string): string {
   const digits = value.replace(/\D/g, '').slice(0, 4)
-
   if (digits.length !== 4) {
     return value
   }
-
   const heures = digits.slice(0, 2)
   const minutes = digits.slice(2, 4)
-
   return `${heures}h${minutes}`
 }
 
@@ -93,7 +91,6 @@ const indicatifsPatrouille = [
   { label: 'A31', value: 'A31' },
   { label: 'A32', value: 'A32' },
   { label: 'A33', value: 'A33' },
-
   { label: 'B1', value: 'B1' },
   { label: 'B11', value: 'B11' },
   { label: 'B12', value: 'B12' },
@@ -106,7 +103,6 @@ const indicatifsPatrouille = [
   { label: 'B31', value: 'B31' },
   { label: 'B32', value: 'B32' },
   { label: 'B33', value: 'B33' },
-
   { label: 'C1', value: 'C1' },
   { label: 'C11', value: 'C11' },
   { label: 'C12', value: 'C12' },
@@ -119,7 +115,6 @@ const indicatifsPatrouille = [
   { label: 'C31', value: 'C31' },
   { label: 'C32', value: 'C32' },
   { label: 'C33', value: 'C33' },
-
   { label: 'D1', value: 'D1' },
   { label: 'D11', value: 'D11' },
   { label: 'D12', value: 'D12' },
@@ -131,13 +126,13 @@ const indicatifsPatrouille = [
   { label: 'D3', value: 'D3' },
   { label: 'D31', value: 'D31' },
   { label: 'D32', value: 'D32' },
-  { label: 'D33', value: 'D33' },
+  { label: 'D33', value: 'D33' }
 ]
 
-const indicatifsA = indicatifsPatrouille.filter(i => i.value.startsWith('A'))
-const indicatifsB = indicatifsPatrouille.filter(i => i.value.startsWith('B'))
-const indicatifsC = indicatifsPatrouille.filter(i => i.value.startsWith('C'))
-const indicatifsD = indicatifsPatrouille.filter(i => i.value.startsWith('D'))
+const indicatifsA = computed(() => indicatifsPatrouille.filter(i => i.value.startsWith('A')))
+const indicatifsB = computed(() => indicatifsPatrouille.filter(i => i.value.startsWith('B')))
+const indicatifsC = computed(() => indicatifsPatrouille.filter(i => i.value.startsWith('C')))
+const indicatifsD = computed(() => indicatifsPatrouille.filter(i => i.value.startsWith('D')))
 
 function onSubmit (event: Event) {
   event.preventDefault()
@@ -152,7 +147,7 @@ function onSubmit (event: Event) {
     </h2>
 
     <DsfrRadioButtonSet
-      :model-value="model.secteur"
+      v-model="model.secteur"
       legend="Secteur d'action *"
       :options="[
         { label: 'ALPHA', value: 'ALPHA' },
@@ -161,17 +156,14 @@ function onSubmit (event: Event) {
         { label: 'DELTA', value: 'DELTA' },
       ]"
       class="fr-mb-3w"
-      @update:model-value="updateField('secteur', $event as Secteur)"
+      required
     />
 
     <fieldset
+      v-if="model.secteur"
       class="fr-fieldset fr-mb-3w"
-      aria-labelledby="indicatifs-legend"
     >
-      <legend
-        id="indicatifs-legend"
-        class="fr-fieldset__legend"
-      >
+      <legend class="fr-fieldset__legend">
         Indicatif de la Patrouille *
       </legend>
 
@@ -186,8 +178,7 @@ function onSubmit (event: Event) {
           v-for="opt in indicatifsA"
           :key="opt.value"
           :label="opt.label"
-          :value="opt.value"
-          name="indicatif-patrouille-a"
+          :name="`indicatif-${opt.value}`"
           :model-value="(model.indicatifs || []).includes(opt.value)"
           class="fr-mb-1v"
           @update:model-value="updateIndicatifs(opt.value, $event)"
@@ -205,8 +196,7 @@ function onSubmit (event: Event) {
           v-for="opt in indicatifsB"
           :key="opt.value"
           :label="opt.label"
-          :value="opt.value"
-          name="indicatif-patrouille-b"
+          :name="`indicatif-${opt.value}`"
           :model-value="(model.indicatifs || []).includes(opt.value)"
           class="fr-mb-1v"
           @update:model-value="updateIndicatifs(opt.value, $event)"
@@ -224,8 +214,7 @@ function onSubmit (event: Event) {
           v-for="opt in indicatifsC"
           :key="opt.value"
           :label="opt.label"
-          :value="opt.value"
-          name="indicatif-patrouille-c"
+          :name="`indicatif-${opt.value}`"
           :model-value="(model.indicatifs || []).includes(opt.value)"
           class="fr-mb-1v"
           @update:model-value="updateIndicatifs(opt.value, $event)"
@@ -243,8 +232,7 @@ function onSubmit (event: Event) {
           v-for="opt in indicatifsD"
           :key="opt.value"
           :label="opt.label"
-          :value="opt.value"
-          name="indicatif-patrouille-d"
+          :name="`indicatif-${opt.value}`"
           :model-value="(model.indicatifs || []).includes(opt.value)"
           class="fr-mb-1v"
           @update:model-value="updateIndicatifs(opt.value, $event)"
@@ -253,102 +241,104 @@ function onSubmit (event: Event) {
     </fieldset>
 
     <DsfrRadioButtonSet
-      :model-value="model.intervention"
+      v-model="model.intervention"
       legend="Intervention *"
       :options="[
         { label: 'INITIATIVE', value: 'INITIATIVE' },
         { label: 'CIC', value: 'CIC' },
       ]"
       class="fr-mb-3w"
-      @update:model-value="updateField('intervention', $event as Intervention)"
+      required
     />
 
     <DsfrInput
-      :model-value="model.natureIntervention ?? ''"
+      v-model="model.natureIntervention"
       label="Nature Intervention *"
       label-visible
       required
       class="fr-mb-3w"
-      @update:model-value="updateField('natureIntervention', $event)"
     />
 
-    <DsfrInput
-      :model-value="model.heureDebut ?? ''"
-      label="Heure début (HHhMM) *"
-      label-visible
-      placeholder="08h30"
-      class="fr-mb-3w"
-      @update:model-value="updateField('heureDebut', $event)"
-      @blur="updateField('heureDebut', formatHeureOnBlur(model.heureDebut ?? ''))"
-    />
+    <div class="fr-grid-row fr-grid-row--gutters fr-mb-3w">
+      <div class="fr-col-12 fr-col-md-6">
+        <DsfrInput
+          v-model="model.heureDebut"
+          label="Heure début (HHhMM) *"
+          label-visible
+          placeholder="08h30"
+          required
+          @blur="model.heureDebut = formatHeureOnBlur(model.heureDebut || '')"
+        />
+      </div>
+      <div class="fr-col-12 fr-col-md-6">
+        <DsfrInput
+          v-model="model.heureFin"
+          label="Heure fin (HHhMM) *"
+          label-visible
+          placeholder="10h15"
+          required
+          @blur="model.heureFin = formatHeureOnBlur(model.heureFin || '')"
+        />
+      </div>
+    </div>
 
     <DsfrInput
-      :model-value="model.heureFin ?? ''"
-      label="Heure fin (HHhMM) *"
-      label-visible
-      placeholder="10h15"
-      class="fr-mb-3w"
-      @update:model-value="updateField('heureFin', $event)"
-      @blur="updateField('heureFin', formatHeureOnBlur(model.heureFin ?? ''))"
-    />
-
-    <DsfrInput
-      :model-value="model.lieu ?? ''"
+      v-model="model.lieu"
       label="Lieu *"
       label-visible
+      required
       class="fr-mb-3w"
-      @update:model-value="updateField('lieu', $event)"
     />
 
     <DsfrRadioButtonSet
-      :model-value="model.pam"
+      v-model="model.pam"
       legend="PAM *"
       :options="[
         { label: 'PAM RAS', value: 'PAM_RAS' },
         { label: 'PAM non RAS', value: 'PAM_NON_RAS' },
       ]"
       class="fr-mb-3w"
-      @update:model-value="updateField('pam', $event as Pam)"
+      required
     />
 
-    <template v-if="model.pam === 'PAM_NON_RAS'">
-      <DsfrInput
-        :model-value="model.personnel ?? ''"
-        label="Personnel"
-        label-visible
-        class="fr-mb-3w"
-        @update:model-value="updateField('personnel', $event)"
-      />
-
-      <DsfrInput
-        :model-value="model.armement ?? ''"
-        label="Armement"
-        label-visible
-        class="fr-mb-3w"
-        @update:model-value="updateField('armement', $event)"
-      />
-
-      <DsfrInput
-        :model-value="model.materiel ?? ''"
-        label="Matériel"
-        label-visible
-        class="fr-mb-3w"
-        @update:model-value="updateField('materiel', $event)"
-      />
-    </template>
+    <div
+      v-if="model.pam === 'PAM_NON_RAS'"
+      class="fr-grid-row fr-grid-row--gutters fr-mb-3w"
+    >
+      <div class="fr-col-12 fr-col-md-4">
+        <DsfrInput
+          v-model="model.personnel"
+          label="Personnel"
+          label-visible
+        />
+      </div>
+      <div class="fr-col-12 fr-col-md-4">
+        <DsfrInput
+          v-model="model.armement"
+          label="Armement"
+          label-visible
+        />
+      </div>
+      <div class="fr-col-12 fr-col-md-4">
+        <DsfrInput
+          v-model="model.materiel"
+          label="Matériel"
+          label-visible
+        />
+      </div>
+    </div>
 
     <DsfrInput
-      :model-value="model.resume ?? ''"
+      v-model="model.resume"
       type="textarea"
       label="Résumé Intervention *"
       label-visible
       required
       class="fr-mb-3w"
-      @update:model-value="updateField('resume', $event)"
     />
 
     <DsfrButton type="submit">
-      Envoyer la remontée CRCA
+      🚀 Envoyer automatiquement vers Grist CRCA
     </DsfrButton>
   </form>
 </template>

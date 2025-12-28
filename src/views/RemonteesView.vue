@@ -12,11 +12,11 @@ const statusTitle = ref('')
 const crcaFormData = reactive<Partial<CrcaModel>>({})
 const crfmFormData = reactive<Partial<CrfmModel>>({})
 
-async function submitCrca () {
-  const formData = { ...crcaFormData }
+// ✅ ENVOI AUTOMATIQUE GRIST - Utilise votre api/grist.post.ts
+async function sendToGrist (data: any, table: 'CRCA' | 'CRFM') {
   const gristPayload = [{
-    ...formData,
-    indicatifs: (formData.indicatifs || []).join(','),
+    ...data,
+    indicatifs: (data.indicatifs || []).join(', '),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   }]
@@ -28,54 +28,47 @@ async function submitCrca () {
       body: JSON.stringify(gristPayload)
     })
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
+    if (response.ok) {
+      const result = await response.json()
+      return { success: true, table: result.table || table }
     }
-
-    const result = await response.json()
-    statusTitle.value = `✅ Succès ${result.table || 'CRCA'}`
-    statusMessage.value = `Remontée ${result.table || 'CRCA'} créée dans Grist !`
-    Object.assign(crcaFormData, {})
+    throw new Error(`HTTP ${response.status}`)
   }
   catch {
+    console.warn('🚀 GRIST READY - Mode manuel:', gristPayload[0])
+    return { success: false, payload: gristPayload[0] }
+  }
+}
+
+async function submitCrca () {
+  const result = await sendToGrist(crcaFormData, 'CRCA')
+
+  if (result.success) {
+    statusTitle.value = `✅ Succès CRCA`
+    statusMessage.value = 'Remontée CRCA créée dans Grist !'
+    Object.assign(crcaFormData, {})
+  }
+  else {
     statusTitle.value = '📋 Mode manuel'
-    statusMessage.value = 'Copier JSON console pour Grist (ID: 287D12LdHqN4hYBpsm52fo)'
-    console.warn('🚀 GRIST READY - Copier JSON ci-dessous:', gristPayload)
+    statusMessage.value = 'Copier JSON console pour Grist CRCA (ID: 287D12LdHqN4hYBpsm52fo)'
   }
 }
 
 async function submitCrfm () {
-  const formData = { ...crfmFormData }
-  const gristPayload = [{
-    ...formData,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }]
+  const result = await sendToGrist(crfmFormData, 'CRFM')
 
-  try {
-    const response = await fetch('/api/grist.post', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(gristPayload)
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
-    }
-
-    const result = await response.json()
-    statusTitle.value = `✅ Succès ${result.table || 'CRFM'}`
-    statusMessage.value = `Remontée ${result.table || 'CRFM'} créée dans Grist !`
+  if (result.success) {
+    statusTitle.value = `✅ Succès CRFM`
+    statusMessage.value = 'Remontée CRFM créée dans Grist !'
     Object.assign(crfmFormData, {})
   }
-  catch {
+  else {
     statusTitle.value = '📋 Mode manuel'
-    statusMessage.value = 'Copier JSON console pour Grist table CRFM'
-    console.warn('🚀 GRIST READY - Copier JSON ci-dessous:', gristPayload)
+    statusMessage.value = 'Copier JSON console pour Grist CRFM'
   }
 }
 
-// ✅ ESLINT OK - 1 statement par ligne
+// ✅ TOUTES VOS FONCTIONS TOGGLE INCHANGÉES
 function toggleCrca () {
   showCrca.value = !showCrca.value
 }
@@ -190,5 +183,4 @@ function handleCrfmClick () {
 </template>
 
 <style scoped>
-
 </style>
