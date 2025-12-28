@@ -12,47 +12,79 @@ const statusTitle = ref('')
 const crcaFormData = reactive<Partial<CrcaModel>>({})
 const crfmFormData = reactive<Partial<CrfmModel>>({})
 
-// ✅ GRIST DIRECT - Format exact colonnes CRCA
+// ✅ GRIST CRCA - TABLE EXPLICITE "CRCA"
 async function sendCrcaToGrist (data: Partial<CrcaModel>): Promise<{ success: true, message: string }> {
-  const gristData = [{
-    Secteur: data.secteur || '',
-    Indic_Patrouille: (data.indicatifs || []).join(', '),
-    Intervention: data.intervention || '',
-    Nature_Intervention: data.natureIntervention || '',
-    Heure_debut_Intervention: data.heureDebut || '',
-    Heure_Fin_Intervention: data.heureFin || '',
-    PAM: data.pam || '',
-    Lieu: data.lieu || '',
-    Resume_Intervention: data.resume || '',
-    Personnel: data.personnel || '',
-    Armement: data.armement || '',
-    Materiel: data.materiel || '',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }]
+  // FORMAT GRIST : { table: "CRCA", records: [...] }
+  const gristPayload = {
+    table: 'CRCA', // ← FORCE TABLE CRCA
+    records: [{
+      Secteur: data.secteur || '',
+      Indic_Patrouille: (data.indicatifs || []).join(', '),
+      Intervention: data.intervention || '',
+      Nature_Intervention: data.natureIntervention || '',
+      Heure_debut_Intervention: data.heureDebut || '',
+      Heure_Fin_Intervention: data.heureFin || '',
+      PAM: data.pam || '',
+      Lieu: data.lieu || '',
+      Resume_Intervention: data.resume || '',
+      Personnel: data.personnel || '',
+      Armement: data.armement || '',
+      Materiel: data.materiel || '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }]
+  }
 
   // eslint-disable-next-line no-console
-  console.log('🚀 GRIST CRCA DIRECT:', JSON.stringify(gristData, null, 2))
+  console.log('🚀 GRIST CRCA → TABLE CRCA:', JSON.stringify(gristPayload, null, 2))
 
   const response = await fetch('/api/grist.post', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(gristData)
+    body: JSON.stringify(gristPayload)
   })
 
   const result = await response.json()
   // eslint-disable-next-line no-console
-  console.log('📨 GRIST RESPONSE:', result)
+  console.log('📨 GRIST CRCA RESPONSE:', result)
 
   if (response.ok && result.success) {
-    return { success: true, message: `✅ CRCA envoyé Grist table CRCA !` }
+    return { success: true, message: `✅ CRCA envoyé table CRCA !` }
   }
-  throw new Error(result.error || 'Grist API KO')
+  throw new Error(result.error || `Grist table CRCA KO (status: ${response.status})`)
+}
+
+// ✅ GRIST CRFM - TABLE EXPLICITE "CRFM"
+async function sendCrfmToGrist (data: Partial<CrfmModel>): Promise<{ success: true, message: string }> {
+  const gristPayload = {
+    table: 'CRFM', // ← FORCE TABLE CRFM
+    records: [{
+      Date: data.date || '',
+      Secteur: data.secteur || '',
+      Horaire: data.horaire || '',
+      Mission: data.mission || '',
+      VL_engagés: data.vlEngages || 0,
+      Effectifs: data.effectifs || 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }]
+  }
+
+  const response = await fetch('/api/grist.post', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(gristPayload)
+  })
+
+  const result = await response.json()
+  if (response.ok && result.success) {
+    return { success: true, message: `✅ CRFM envoyé table CRFM !` }
+  }
+  throw new Error(result.error || `Grist table CRFM KO (status: ${response.status})`)
 }
 
 async function submitCrca () {
   try {
-    // Validation
     if (!crcaFormData.secteur || (crcaFormData.indicatifs?.length || 0) === 0) {
       throw new Error('Secteur + 1 indicatif obligatoires')
     }
@@ -60,40 +92,14 @@ async function submitCrca () {
     await sendCrcaToGrist(crcaFormData)
 
     statusTitle.value = '✅ Succès CRCA'
-    statusMessage.value = 'Remontée CRCA créée dans Grist automatiquement !'
-    Object.assign(crcaFormData, {}) // Reset
+    statusMessage.value = 'Remontée CRCA → Table CRCA Grist !'
+    Object.assign(crcaFormData, {})
   }
   catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
-    statusTitle.value = '❌ Erreur envoi'
-    statusMessage.value = `Échec automatique: ${errorMessage}. Vérifiez API /api/grist.post`
+    statusTitle.value = '❌ Erreur CRCA'
+    statusMessage.value = `Table CRCA: ${errorMessage}`
   }
-}
-
-async function sendCrfmToGrist (data: Partial<CrfmModel>): Promise<{ success: true, message: string }> {
-  const gristData = [{
-    // Mapping CRFM selon vos colonnes (à compléter)
-    Date: data.date || '',
-    Secteur: data.secteur || '',
-    Horaire: data.horaire || '',
-    Mission: data.mission || '',
-    VL_engagés: data.vlEngages || 0,
-    Effectifs: data.effectifs || 0,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }]
-
-  const response = await fetch('/api/grist.post', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(gristData)
-  })
-
-  const result = await response.json()
-  if (response.ok && result.success) {
-    return { success: true, message: `✅ CRFM envoyé Grist table CRFM !` }
-  }
-  throw new Error(result.error || 'Grist API KO')
 }
 
 async function submitCrfm () {
@@ -101,13 +107,13 @@ async function submitCrfm () {
     await sendCrfmToGrist(crfmFormData)
 
     statusTitle.value = '✅ Succès CRFM'
-    statusMessage.value = 'Remontée CRFM créée dans Grist automatiquement !'
+    statusMessage.value = 'Remontée CRFM → Table CRFM Grist !'
     Object.assign(crfmFormData, {})
   }
   catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
-    statusTitle.value = '❌ Erreur envoi'
-    statusMessage.value = `Échec automatique: ${errorMessage}. Vérifiez API /api/grist.post`
+    statusTitle.value = '❌ Erreur CRFM'
+    statusMessage.value = `Table CRFM: ${errorMessage}`
   }
 }
 
@@ -165,7 +171,7 @@ function handleCrfmClick () {
           class="fr-btn fr-btn--primary w-100"
           @click="handleCrcaClick"
         >
-          📋 Remontée CRCA
+          📋 Remontée CRCA → Table CRCA
         </button>
       </div>
       <div class="fr-col-12 fr-col-md-5 fr-col-lg-4">
@@ -173,7 +179,7 @@ function handleCrfmClick () {
           class="fr-btn fr-btn--secondary w-100"
           @click="handleCrfmClick"
         >
-          📋 Remontée CRFM
+          📋 Remontée CRFM → Table CRFM
         </button>
       </div>
     </div>
