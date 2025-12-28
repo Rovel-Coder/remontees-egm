@@ -4,7 +4,7 @@ import {
   DsfrInput,
   DsfrRadioButtonSet
 } from '@gouvminint/vue-dsfr'
-import { computed } from 'vue'
+import { reactive, watch } from 'vue'
 
 type Horaire = '6-14' | '14-22' | '22-6' | ''
 type Secteur = 'ALPHA' | 'BRAVO' | 'CHARLIE' | 'DELTA' | ''
@@ -68,55 +68,45 @@ const emit = defineEmits<{
   'submit': []
 }>()
 
-const model = computed({
-  get: (): Partial<CrfmModel> => ({
-    date: '',
-    horaire: '' as Horaire,
-    secteur: '' as Secteur,
-    mission: '' as Mission,
-    vlEngages: null,
-    effectifs: null,
-    nbOad: null,
-    controlesVl: null,
-    controlesPersonne: null,
-    caillassageTouchant: null,
-    caillassageNonTouchant: null,
-    refusAvecInterp: null,
-    refusSansInterp: null,
-    obstacle: null,
-    feuHabitation: null,
-    feuVoitures: null,
-    feuAutres: null,
-    papafTouchant: null,
-    papafNonTouchant: null,
-    grenMp7: null,
-    grenCm6: null,
-    grenGenlDmp: null,
-    grenGm2l: null,
-    grenGl304: null,
-    munLbd40: null,
-    mun9mm: null,
-    mun556: null,
-    mun762: null,
-    stupCannabis: null,
-    stupPlant: null,
-    stupAutres: '',
-    infraTa: null,
-    infraDelits: null,
-    interpZgn: null,
-    interpZpn: null,
-    nbInterCorgCic: null,
-    nbInterInitiative: null,
-    rensFrm: null,
-    rensFrs: null,
-    commentairePam: '',
-    ...props.modelValue,
-  }),
-  set: (value: Partial<CrfmModel>) => emit('update:modelValue', value),
+// Utilisation de reactive pour éviter la réinitialisation des props
+const model = reactive<Partial<CrfmModel>>({
+  ...props.modelValue
 })
+
+// Synchronisation bidirectionnelle props -> model
+watch(() => props.modelValue, (newValue) => {
+  Object.assign(model, newValue)
+}, { deep: true, immediate: true })
+
+// Synchronisation model -> parent
+watch(model, (newValue) => {
+  emit('update:modelValue', newValue)
+}, { deep: true })
 
 function onSubmit (event: Event) {
   event.preventDefault()
+
+  // Validation des champs obligatoires
+  const requiredFields: (keyof CrfmModel)[] = [
+    'date',
+    'horaire',
+    'secteur',
+    'mission',
+    'vlEngages',
+    'effectifs',
+    'commentairePam'
+  ]
+
+  const missingFields = requiredFields.filter(field =>
+    !model[field] || model[field] === ''
+  )
+
+  if (missingFields.length > 0) {
+    console.warn('Champs obligatoires manquants:', missingFields)
+    // Optionnel: afficher une alerte DSFR
+    return false
+  }
+
   emit('submit')
 }
 </script>
