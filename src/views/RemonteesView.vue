@@ -3,6 +3,7 @@ import type { CrcaModel, CrfmModel } from '@/types'
 import { reactive, ref } from 'vue'
 import CrcaForm from '@/components/CrcaForm.vue'
 import CrfmForm from '@/components/CrfmForm.vue'
+import { gristService } from '@/services/gristService' // ✅ NOUVEAU
 
 const showCrca = ref(false)
 const showCrfm = ref(false)
@@ -12,7 +13,7 @@ const statusTitle = ref('')
 const crcaFormData = reactive<Partial<CrcaModel>>({})
 const crfmFormData = reactive<Partial<CrfmModel>>({})
 
-// ✅ CRCA → Table CRCA (FONCTIONNEL)
+// ✅ CRCA → Table CRCA (FONCTIONNEL - via ancien /api/grist.post)
 async function sendCrcaToGrist (data: Partial<CrcaModel>): Promise<{ success: true, message: string, table: string }> {
   const gristPayload = {
     table: 'CRCA',
@@ -45,77 +46,23 @@ async function sendCrcaToGrist (data: Partial<CrcaModel>): Promise<{ success: tr
   throw new Error(result.error || 'Grist CRCA KO')
 }
 
-// ✅ CRFM → Table CRFM (Mapping EXACT)
-async function sendCrfmToGrist (data: Partial<CrfmModel>): Promise<{ success: true, message: string, table: string }> {
-  // eslint-disable-next-line no-console
-  console.log('🔍 CRFM RAW DATA:', JSON.parse(JSON.stringify(data)))
+// ✅ CRFM → gristService (NOUVEAU)
+async function submitCrfm () {
+  try {
+    const result = await gristService.submitCrfm(crfmFormData) // ✅ GRIST SERVICE
 
-  const gristPayload = {
-    table: 'CRFM',
-    records: [{
-      Date: data.date || '',
-      Secteur: data.secteur || '',
-      Mission: data.mission || '',
-      Horaires: data.horaire || '',
-      Effectifs: data.effectifs?.toString() || '',
-      VL_Engages: data.vlEngages?.toString() || '',
-      Nbr_OAD: data.nbOad?.toString() || '',
-      Nbr_CTRL_VL: data.controlesVl?.toString() || '',
-      Nbr_CTRL_Personne: data.controlesPersonne?.toString() || '',
-      Nbr_Intervention_CORG_CIC: data.nbInterCorgCic?.toString() || '',
-      Nbr_Intervention_Initiative: data.nbInterInitiative?.toString() || '',
-      FRM: data.rensFrm?.toString() || '',
-      FRS: data.rensFrs?.toString() || '',
-      Cannabis: data.stupCannabis?.toString() || '',
-      Plant_Cannabis: data.stupPlant?.toString() || '',
-      Autres: data.stupAutres || '',
-      Precision_STUP: data.stupAutres || '',
-      TA: data.infraTa?.toString() || '',
-      Delits: data.infraDelits?.toString() || '',
-      Interpellation_ZGN: data.interpZgn?.toString() || '',
-      Interpellation_ZPN: data.interpZpn?.toString() || '',
-      Caillassage_Touchant: data.caillassageTouchant?.toString() || '',
-      Caillassage_Non_Touchant: data.caillassageNonTouchant?.toString() || '',
-      $Refus_Obtemperer_Avec_Interpellation: data.refusAvecInterp?.toString() || '',
-      Refus_Obtemperer_Sans_Interpellation: data.refusSansInterp?.toString() || '',
-      Obstacle_Entrave_a_la_circulation_: data.obstacle?.toString() || '',
-      Feu_Habitation_Commerce: data.feuHabitation?.toString() || '',
-      Feu_Voitures: data.feuVoitures?.toString() || '',
-      Feu_Autres: data.feuAutres?.toString() || '',
-      PAPAAF_Touchants: data.papafTouchant?.toString() || '',
-      PAPAAF_Non_Touchants: data.papafNonTouchant?.toString() || '',
-      MP7: data.grenMp7?.toString() || '',
-      CM6: data.grenCm6?.toString() || '',
-      GENL_DMP: data.grenGenlDmp?.toString() || '',
-      GM2L: data.grenGm2l?.toString() || '',
-      GL304: data.grenGl304?.toString() || '',
-      LBD_40: data.munLbd40?.toString() || '',
-      c9_mm: data.mun9mm?.toString() || '',
-      c5_56_mm: data.mun556?.toString() || '',
-      c7_62_mm: data.mun762?.toString() || '',
-      Commentaire: data.commentairePam || ''
-    }]
+    statusTitle.value = result.message
+    statusMessage.value = `✅ CRFM → Grist numerique.gouv.fr`
+    Object.assign(crfmFormData, {}) // Reset
   }
-
-  // eslint-disable-next-line no-console
-  console.log('🚀 CRFM PAYLOAD:', JSON.stringify(gristPayload.records[0], null, 2))
-
-  const response = await fetch('/api/grist.post', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(gristPayload)
-  })
-
-  const result = await response.json()
-  // eslint-disable-next-line no-console
-  console.log('📨 CRFM RESULT:', result)
-
-  if (response.ok && result.success) {
-    return { success: true, message: result.message || '✅ CRFM envoyé !', table: 'CRFM' }
+  catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
+    statusTitle.value = '❌ Erreur CRFM'
+    statusMessage.value = errorMessage
   }
-  throw new Error(result.error || 'Grist CRFM KO')
 }
 
+// ✅ CRCA → Ancien système (fonctionnel)
 async function submitCrca () {
   try {
     // Validation
@@ -132,21 +79,6 @@ async function submitCrca () {
   catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
     statusTitle.value = '❌ Erreur CRCA'
-    statusMessage.value = errorMessage
-  }
-}
-
-async function submitCrfm () {
-  try {
-    const result = await sendCrfmToGrist(crfmFormData)
-
-    statusTitle.value = result.message
-    statusMessage.value = `✅ ${result.table} → Grist numerique.gouv.fr`
-    Object.assign(crfmFormData, {}) // Reset
-  }
-  catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
-    statusTitle.value = '❌ Erreur CRFM'
     statusMessage.value = errorMessage
   }
 }
@@ -213,7 +145,7 @@ function handleCrfmClick () {
           class="fr-btn fr-btn--secondary w-100"
           @click="handleCrfmClick"
         >
-          📋 Remontée CRFM
+          📋 Remontée CRFM 🚀
         </button>
       </div>
     </div>
