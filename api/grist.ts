@@ -4,9 +4,9 @@ import process from 'node:process'
 const GRIST_DOC_ID = process.env.GRIST_DOC_ID!
 const GRIST_API_KEY = process.env.GRIST_API_KEY!
 
-export async function POST (request: Request) {
+export default async function handler (req: Request) {
   try {
-    const { type, payload } = await request.json()
+    const { type, payload } = await req.json()
 
     const GRIST_BASE_URL = `https://docs.getgrist.com/${GRIST_DOC_ID}/api/v1`
     const record: any = {
@@ -30,15 +30,25 @@ export async function POST (request: Request) {
       throw new Error(`Grist ${response.status}`)
     }
 
-    return Response.json({
+    const successResponse = {
       success: true,
       message: `${type} envoyé Grist !`
+    }
+
+    return new Response(JSON.stringify(successResponse), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
     })
   }
   catch (error: any) {
-    return Response.json(
-      { success: false, message: error.message },
-      { status: 500 }
-    )
+    const errorResponse = {
+      success: false,
+      message: error.message
+    }
+
+    return new Response(JSON.stringify(errorResponse), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
   }
 }

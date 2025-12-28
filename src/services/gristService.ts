@@ -1,10 +1,46 @@
 import type { CrcaModel, CrfmModel } from '../types'
 
 class GristService {
-  private isProd = import.meta.env.MODE === 'production'
-
   private saveDraft (type: 'CRCA' | 'CRFM', data: any): void {
     localStorage.setItem(`${type.toLowerCase()}_brouillon`, JSON.stringify(data, null, 2))
+  }
+
+  async submitCrca (data: Partial<CrcaModel>): Promise<{ success: boolean, message: string }> {
+    this.saveDraft('CRCA', data)
+
+    try {
+      const response = await fetch('/api/grist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'CRCA', payload: data })
+      })
+
+      const result = await response.json()
+      return result
+    }
+    catch (error: any) {
+      console.warn('API error:', error)
+      return { success: true, message: '💾 Brouillon sauvé localement' }
+    }
+  }
+
+  async submitCrfm (data: Partial<CrfmModel>): Promise<{ success: boolean, message: string }> {
+    this.saveDraft('CRFM', data)
+
+    try {
+      const response = await fetch('/api/grist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'CRFM', payload: data })
+      })
+
+      const result = await response.json()
+      return result
+    }
+    catch (error: any) {
+      console.warn('API error:', error)
+      return { success: true, message: '💾 Brouillon sauvé localement' }
+    }
   }
 
   loadDraft (type: 'CRCA' | 'CRFM'): any {
@@ -15,34 +51,6 @@ class GristService {
 
   clearDraft (type: 'CRCA' | 'CRFM'): void {
     localStorage.removeItem(`${type.toLowerCase()}_brouillon`)
-  }
-
-  async submitCrca (data: Partial<CrcaModel>): Promise<{ success: boolean, message: string }> {
-    this.saveDraft('CRCA', data)
-
-    if (!this.isProd) {
-      console.warn('📋 DEV: CRCA brouillon sauvé → localStorage')
-      console.warn('JSON CRCA:', JSON.stringify(data, null, 2))
-      return { success: true, message: '💾 Brouillon CRCA sauvé - Copier dans Grist' }
-    }
-
-    console.warn('🔒 PROD: CRCA prêt - Copier Grist (ID: 287D12LdHqN4hYBpsm52fo)')
-    console.warn('JSON CRCA PROD:', JSON.stringify(data, null, 2))
-    return { success: true, message: '✅ PROD: Copier CRCA dans Grist (ID: 287D12LdHqN4hYBpsm52fo)' }
-  }
-
-  async submitCrfm (data: Partial<CrfmModel>): Promise<{ success: boolean, message: string }> {
-    this.saveDraft('CRFM', data)
-
-    if (!this.isProd) {
-      console.warn('📋 DEV: CRFM brouillon sauvé → localStorage')
-      console.warn('JSON CRFM:', JSON.stringify(data, null, 2))
-      return { success: true, message: '💾 Brouillon CRFM sauvé - Copier dans Grist' }
-    }
-
-    console.warn('🔒 PROD: CRFM prêt - Copier Grist (ID: 287D12LdHqN4hYBpsm52fo)')
-    console.warn('JSON CRFM PROD:', JSON.stringify(data, null, 2))
-    return { success: true, message: '✅ PROD: Copier CRFM dans Grist (ID: 287D12LdHqN4hYBpsm52fo)' }
   }
 }
 
