@@ -1,17 +1,17 @@
 import process from 'node:process'
-import { URL, fileURLToPath } from 'node:url'
+import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import vueJsx from '@vitejs/plugin-vue-jsx'
-import AutoImport from 'unplugin-auto-import/vite'
-import Components from 'unplugin-vue-components/vite'
 import {
   vueDsfrAutoimportPreset,
   vueDsfrComponentResolver,
 } from '@gouvminint/vue-dsfr'
+import vue from '@vitejs/plugin-vue'
+import vueJsx from '@vitejs/plugin-vue-jsx'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { defineConfig } from 'vite'
 
-// https://vitejs.dev/config/
+// [https://vitejs.dev/config/](https://vitejs.dev/config/)
 export default defineConfig({
   plugins: [
     vue(),
@@ -40,7 +40,7 @@ export default defineConfig({
         globalsPropValue: true,
       },
     }),
-    // https://github.com/antfu/unplugin-vue-components
+    // [https://github.com/antfu/unplugin-vue-components](https://github.com/antfu/unplugin-vue-components)
     Components({
       extensions: ['vue'],
       dirs: ['src/components'], // Autoimport de vos composants qui sont dans le dossier `src/components`
@@ -57,4 +57,14 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  // ✅ AJOUT PROXY GRIST API
+  server: {
+    proxy: {
+      '/api/grist.post': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: path => path
+      }
+    }
+  }
 })
