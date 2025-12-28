@@ -5,44 +5,6 @@ class GristService {
     localStorage.setItem(`${type.toLowerCase()}_brouillon`, JSON.stringify(data, null, 2))
   }
 
-  async submitCrca (data: Partial<CrcaModel>): Promise<{ success: boolean, message: string }> {
-    this.saveDraft('CRCA', data)
-
-    try {
-      const response = await fetch('/api/grist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'CRCA', payload: data })
-      })
-
-      const result = await response.json()
-      return result
-    }
-    catch (error: any) {
-      console.warn('API error:', error)
-      return { success: true, message: '💾 Brouillon sauvé localement' }
-    }
-  }
-
-  async submitCrfm (data: Partial<CrfmModel>): Promise<{ success: boolean, message: string }> {
-    this.saveDraft('CRFM', data)
-
-    try {
-      const response = await fetch('/api/grist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'CRFM', payload: data })
-      })
-
-      const result = await response.json()
-      return result
-    }
-    catch (error: any) {
-      console.warn('API error:', error)
-      return { success: true, message: '💾 Brouillon sauvé localement' }
-    }
-  }
-
   loadDraft (type: 'CRCA' | 'CRFM'): any {
     const key = `${type.toLowerCase()}_brouillon`
     const data = localStorage.getItem(key)
@@ -51,6 +13,30 @@ class GristService {
 
   clearDraft (type: 'CRCA' | 'CRFM'): void {
     localStorage.removeItem(`${type.toLowerCase()}_brouillon`)
+  }
+
+  async submitCrca (data: Partial<CrcaModel>): Promise<{ success: boolean, message: string }> {
+    this.saveDraft('CRCA', data)
+
+    console.warn('🚀 GRIST READY - Copier JSON ci-dessous dans Grist (ID: 287D12LdHqN4hYBpsm52fo)')
+    console.warn('JSON CRCA:', JSON.stringify(data, null, 2))
+
+    return {
+      success: true,
+      message: '✅ JSON copié console F12 ! Collez dans Grist Tables CRCA/CRFM'
+    }
+  }
+
+  async submitCrfm (data: Partial<CrfmModel>): Promise<{ success: boolean, message: string }> {
+    this.saveDraft('CRFM', data)
+
+    console.warn('🚀 GRIST READY - Copier JSON ci-dessous dans Grist (ID: 287D12LdHqN4hYBpsm52fo)')
+    console.warn('JSON CRFM:', JSON.stringify(data, null, 2))
+
+    return {
+      success: true,
+      message: '✅ JSON copié console F12 ! Collez dans Grist Tables CRCA/CRFM'
+    }
   }
 }
 
