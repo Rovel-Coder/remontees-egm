@@ -12,101 +12,102 @@ const statusTitle = ref('')
 const crcaFormData = reactive<Partial<CrcaModel>>({})
 const crfmFormData = reactive<Partial<CrfmModel>>({})
 
-// ✅ MAPPING GRIST PRÉCIS + FORMAT API CORRIGÉ - ESLint clean
-async function sendToGrist (data: any, table: 'CRCA' | 'CRFM') {
-  const crcaMapping = {
-    Secteur: data.secteur,
+// ✅ GRIST DIRECT - Format exact colonnes CRCA
+async function sendCrcaToGrist (data: Partial<CrcaModel>): Promise<{ success: true, message: string }> {
+  const gristData = [{
+    Secteur: data.secteur || '',
     Indic_Patrouille: (data.indicatifs || []).join(', '),
-    Intervention: data.intervention,
-    Nature_Intervention: data.natureIntervention,
-    Heure_debut_Intervention: data.heureDebut,
-    Heure_Fin_Intervention: data.heureFin,
-    PAM: data.pam,
-    Lieu: data.lieu,
-    Resume_Intervention: data.resume,
-    Personnel: data.personnel,
-    Armement: data.armement,
-    Materiel: data.materiel,
-  }
-
-  const crfmMapping = {
-    // TODO: Compléter colonnes CRFM quand disponibles
-  }
-
-  const payload = {
-    table,
-    records: [{
-      ...(table === 'CRCA' ? crcaMapping : crfmMapping),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }]
-  }
+    Intervention: data.intervention || '',
+    Nature_Intervention: data.natureIntervention || '',
+    Heure_debut_Intervention: data.heureDebut || '',
+    Heure_Fin_Intervention: data.heureFin || '',
+    PAM: data.pam || '',
+    Lieu: data.lieu || '',
+    Resume_Intervention: data.resume || '',
+    Personnel: data.personnel || '',
+    Armement: data.armement || '',
+    Materiel: data.materiel || '',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }]
 
   // eslint-disable-next-line no-console
-  console.log('🚀 GRIST PAYLOAD:', JSON.stringify(payload, null, 2))
+  console.log('🚀 GRIST CRCA DIRECT:', JSON.stringify(gristData, null, 2))
 
-  try {
-    const response = await fetch('/api/grist.post', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
+  const response = await fetch('/api/grist.post', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(gristData)
+  })
 
-    // eslint-disable-next-line no-console
-    console.log('📨 STATUS:', response.status)
+  const result = await response.json()
+  // eslint-disable-next-line no-console
+  console.log('📨 GRIST RESPONSE:', result)
 
-    const result = await response.json()
-    // eslint-disable-next-line no-console
-    console.log('📨 FULL RESULT:', JSON.stringify(result, null, 2))
-    // eslint-disable-next-line no-console
-    console.log('🎯 TABLE ENVOYÉE:', table, '→ TABLE RECUE:', result.table)
-
-    if (response.ok && result.success) {
-      return {
-        success: true,
-        table: result.table || table,
-        message: result.message || `✅ ${table} envoyé !`
-      }
-    }
-
-    console.error('❌ GRIST KO:', result)
-    return { success: false, error: result.error || 'API error' }
+  if (response.ok && result.success) {
+    return { success: true, message: `✅ CRCA envoyé Grist table CRCA !` }
   }
-  catch (error) {
-    console.error('❌ FETCH ERROR:', error)
-    return { success: false, payload }
-  }
+  throw new Error(result.error || 'Grist API KO')
 }
 
 async function submitCrca () {
-  // eslint-disable-next-line no-console
-  console.log('📤 CRCA SUBMIT:', JSON.parse(JSON.stringify(crcaFormData)))
-  const result = await sendToGrist(crcaFormData, 'CRCA')
+  try {
+    // Validation
+    if (!crcaFormData.secteur || (crcaFormData.indicatifs?.length || 0) === 0) {
+      throw new Error('Secteur + 1 indicatif obligatoires')
+    }
 
-  if (result.success) {
-    statusTitle.value = result.message || '✅ Succès CRCA'
-    statusMessage.value = 'Remontée CRCA créée dans Grist !'
-    Object.assign(crcaFormData, {})
+    await sendCrcaToGrist(crcaFormData)
+
+    statusTitle.value = '✅ Succès CRCA'
+    statusMessage.value = 'Remontée CRCA créée dans Grist automatiquement !'
+    Object.assign(crcaFormData, {}) // Reset
   }
-  else {
-    statusTitle.value = '📋 Mode manuel'
-    statusMessage.value = `Erreur: ${result.error || 'Copier JSON console pour Grist CRCA (ID: 287D12LdHqN4hYBpsm52fo)'}. Console: F12`
+  catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
+    statusTitle.value = '❌ Erreur envoi'
+    statusMessage.value = `Échec automatique: ${errorMessage}. Vérifiez API /api/grist.post`
   }
 }
 
-async function submitCrfm () {
-  // eslint-disable-next-line no-console
-  console.log('📤 CRFM SUBMIT:', JSON.parse(JSON.stringify(crfmFormData)))
-  const result = await sendToGrist(crfmFormData, 'CRFM')
+async function sendCrfmToGrist (data: Partial<CrfmModel>): Promise<{ success: true, message: string }> {
+  const gristData = [{
+    // Mapping CRFM selon vos colonnes (à compléter)
+    Date: data.date || '',
+    Secteur: data.secteur || '',
+    Horaire: data.horaire || '',
+    Mission: data.mission || '',
+    VL_engagés: data.vlEngages || 0,
+    Effectifs: data.effectifs || 0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }]
 
-  if (result.success) {
-    statusTitle.value = result.message || '✅ Succès CRFM'
-    statusMessage.value = 'Remontée CRFM créée dans Grist !'
+  const response = await fetch('/api/grist.post', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(gristData)
+  })
+
+  const result = await response.json()
+  if (response.ok && result.success) {
+    return { success: true, message: `✅ CRFM envoyé Grist table CRFM !` }
+  }
+  throw new Error(result.error || 'Grist API KO')
+}
+
+async function submitCrfm () {
+  try {
+    await sendCrfmToGrist(crfmFormData)
+
+    statusTitle.value = '✅ Succès CRFM'
+    statusMessage.value = 'Remontée CRFM créée dans Grist automatiquement !'
     Object.assign(crfmFormData, {})
   }
-  else {
-    statusTitle.value = '📋 Mode manuel'
-    statusMessage.value = `Erreur: ${result.error || 'Copier JSON console pour Grist CRFM'}. Console: F12`
+  catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
+    statusTitle.value = '❌ Erreur envoi'
+    statusMessage.value = `Échec automatique: ${errorMessage}. Vérifiez API /api/grist.post`
   }
 }
 
@@ -135,11 +136,6 @@ function handleCrfmClick () {
   toggleCrfm()
   resetCrca()
 }
-
-function _closeStatus () {
-  statusTitle.value = ''
-  statusMessage.value = ''
-}
 </script>
 
 <template>
@@ -162,7 +158,7 @@ function _closeStatus () {
       </div>
     </div>
 
-    <!-- ✅ BOUTONS DSFR CENTRÉS -->
+    <!-- BOUTONS DSFR -->
     <div class="fr-grid-row fr-grid-row--center fr-grid-row--gutters fr-mt-4w fr-mb-5w">
       <div class="fr-col-12 fr-col-md-5 fr-col-lg-4">
         <button
@@ -182,7 +178,7 @@ function _closeStatus () {
       </div>
     </div>
 
-    <!-- ✅ FORMULAIRES SIMPLES - SANS CARDS -->
+    <!-- FORMULAIRES -->
     <div
       v-if="showCrca"
       class="fr-mb-5w"
@@ -213,7 +209,7 @@ function _closeStatus () {
       </div>
     </div>
 
-    <!-- Status amélioré ✅ TYPE SCRIPT CORRIGÉ -->
+    <!-- Status AUTO -->
     <div
       v-if="statusMessage"
       class="fr-mt-5w"
@@ -222,20 +218,13 @@ function _closeStatus () {
         class="fr-alert"
         :class="[
           { 'fr-alert--success': statusTitle.includes('✅') },
-          { 'fr-alert--error': statusTitle.includes('❌') || statusTitle.includes('Erreur') },
+          { 'fr-alert--error': statusTitle.includes('❌') },
         ]"
       >
         <p class="fr-alert__title">
           {{ statusTitle }}
         </p>
         <p>{{ statusMessage }}</p>
-        <button
-          v-if="statusTitle.includes('Mode manuel')"
-          class="fr-btn fr-btn--sm fr-btn--secondary"
-          @click="$el.closest('.fr-alert')?.remove()"
-        >
-          Fermer
-        </button>
       </div>
     </div>
   </div>
