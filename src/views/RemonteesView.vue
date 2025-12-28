@@ -1,60 +1,125 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import type { CrcaModel, CrfmModel } from '@/types'
+import { onMounted, ref } from 'vue'
 import CrcaForm from '@/components/CrcaForm.vue'
 import CrfmForm from '@/components/CrfmForm.vue'
+import { gristService } from '@/services/gristService'
 
-const activeForm = ref<'crca' | 'crfm' | null>(null)
+const activeTab = ref<'none' | 'crca' | 'crfm'>('none')
+const successMsg = ref('')
+const statusMsg = ref({ title: '', description: '' } as { title: string, description: string })
 
-const crcaData = ref({})
-const crfmData = ref({})
+const crcaFormData = ref<Partial<CrcaModel>>({})
+const crfmFormData = ref<Partial<CrfmModel>>({})
 
-function handleSubmitCrca () {
-  // TODO : envoyer crcaData.value vers Grist
+function selectCrca () {
+  activeTab.value = 'crca'
+  crcaFormData.value = {}
 }
 
-function handleSubmitCrfm () {
-  // TODO : envoyer crfmData.value vers Grist
+function selectCrfm () {
+  activeTab.value = 'crfm'
+  crfmFormData.value = {}
+}
+
+onMounted(() => {
+  const _crcaDraft = gristService.loadDraft('CRCA')
+  const _crfmDraft = gristService.loadDraft('CRFM')
+
+  if (_crcaDraft) {
+    crcaFormData.value = _crcaDraft
+    statusMsg.value = { title: 'Brouillon chargé', description: 'CRCA restauré' }
+  }
+
+  setTimeout(() => statusMsg.value = { title: '', description: '' }, 3000)
+})
+
+async function handleSubmitCrca () {
+  const result = await gristService.submitCrca(crcaFormData.value)
+  successMsg.value = result.message
+  gristService.clearDraft('CRCA')
+  crcaFormData.value = {}
+  activeTab.value = 'none' // Retour accueil
+  setTimeout(() => successMsg.value = '', 5000)
+}
+
+async function handleSubmitCrfm () {
+  const result = await gristService.submitCrfm(crfmFormData.value) // ✅ FIX submitCrfm
+  successMsg.value = result.message
+  gristService.clearDraft('CRFM')
+  crfmFormData.value = {}
+  activeTab.value = 'none' // Retour accueil
+  setTimeout(() => successMsg.value = '', 5000)
 }
 </script>
 
 <template>
-  <div class="fr-container fr-mt-3w fr-mb-5w">
-    <h1 class="fr-h2">
-      Remontées EGM
-    </h1>
+  <div class="fr-grid-row fr-grid-row--center">
+    <div class="fr-col-12 fr-col-lg-10">
+      <header class="fr-mb-5w">
+        <h1 class="fr-h1">
+          Remontées EGM
+        </h1>
+        <p class="fr-text-lg">
+          CRCA / CRFM - Gendarmerie Nationale
+        </p>
+      </header>
 
-    <p class="fr-text--sm fr-mb-3w">
-      Sélectionnez le type de remontée à déclarer.
-    </p>
+      <!-- Statut -->
+      <DsfrAlert
+        v-if="statusMsg.title"
+        :title="statusMsg.title"
+        :description="statusMsg.description"
+        closable
+      />
 
-    <div class="fr-btns-group fr-btns-group--inline fr-mb-4w">
-      <DsfrButton
-        :secondary="activeForm !== 'crca'"
-        @click="activeForm = 'crca'"
-      >
-        Remontée CRCA
-      </DsfrButton>
+      <!-- BOUTONS DSFR (comme image) -->
+      <div class="fr-grid-row fr-grid-row--gutters fr-mb-5w">
+        <div class="fr-col-12 fr-col-md-6">
+          <DsfrButton
+            size="lg"
+            class="fr-mb-2w"
+            @click="selectCrca"
+          >
+            📋 Nouvelle remontée CRCA
+          </DsfrButton>
+        </div>
+        <div class="fr-col-12 fr-col-md-6">
+          <DsfrButton
+            size="lg"
+            class="fr-mb-2w"
+            @click="selectCrfm"
+          >
+            📊 Nouvelle remontée CRFM
+          </DsfrButton>
+        </div>
+      </div>
 
-      <DsfrButton
-        :secondary="activeForm !== 'crfm'"
-        @click="activeForm = 'crfm'"
-      >
-        Remontée CRFM
-      </DsfrButton>
+      <!-- Formulaire CRCA -->
+      <div v-if="activeTab === 'crca'">
+        <CrcaForm
+          v-model="crcaFormData"
+          @submit="handleSubmitCrca"
+        />
+      </div>
+
+      <!-- Formulaire CRFM -->
+      <div v-if="activeTab === 'crfm'">
+        <CrfmForm
+          v-model="crfmFormData"
+          @submit="handleSubmitCrfm"
+        />
+      </div>
+
+      <!-- Succès -->
+      <DsfrAlert
+        v-if="successMsg"
+        title="✅ Succès !"
+        :description="successMsg"
+        type="success"
+        closable
+        @close="successMsg = ''"
+      />
     </div>
-
-    <section v-if="activeForm === 'crca'">
-      <CrcaForm
-        v-model="crcaData"
-        @submit="handleSubmitCrca"
-      />
-    </section>
-
-    <section v-if="activeForm === 'crfm'">
-      <CrfmForm
-        v-model="crfmData"
-        @submit="handleSubmitCrfm"
-      />
-    </section>
   </div>
 </template>
