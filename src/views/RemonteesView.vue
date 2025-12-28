@@ -12,7 +12,7 @@ const statusTitle = ref('')
 const crcaFormData = reactive<Partial<CrcaModel>>({})
 const crfmFormData = reactive<Partial<CrfmModel>>({})
 
-// ✅ MAPPING GRIST PRÉCIS - ESLint clean
+// ✅ MAPPING GRIST PRÉCIS + FORMAT API CORRIGÉ - ESLint clean
 async function sendToGrist (data: any, table: 'CRCA' | 'CRFM') {
   const crcaMapping = {
     Secteur: data.secteur,
@@ -30,24 +30,26 @@ async function sendToGrist (data: any, table: 'CRCA' | 'CRFM') {
   }
 
   const crfmMapping = {
-    // TODO: Compléter avec colonnes CRFM
+    // TODO: Compléter colonnes CRFM quand disponibles
   }
 
-  const gristPayload = [{
-    ...(table === 'CRCA' ? crcaMapping : {}),
-    ...(table === 'CRFM' ? crfmMapping : {}),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }]
+  const payload = {
+    table,
+    records: [{
+      ...(table === 'CRCA' ? crcaMapping : crfmMapping),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }]
+  }
 
   // eslint-disable-next-line no-console
-  console.log('🚀 ENVOI GRIST:', table, gristPayload)
+  console.log('🚀 GRIST PAYLOAD:', JSON.stringify(payload, null, 2))
 
   try {
     const response = await fetch('/api/grist.post', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(gristPayload),
+      body: JSON.stringify(payload)
     })
 
     // eslint-disable-next-line no-console
@@ -55,22 +57,24 @@ async function sendToGrist (data: any, table: 'CRCA' | 'CRFM') {
 
     const result = await response.json()
     // eslint-disable-next-line no-console
-    console.log('📨 RESULT:', result)
+    console.log('📨 FULL RESULT:', JSON.stringify(result, null, 2))
+    // eslint-disable-next-line no-console
+    console.log('🎯 TABLE ENVOYÉE:', table, '→ TABLE RECUE:', result.table)
 
-    if (response.ok && (result.success === true || result.success === 'true')) {
+    if (response.ok && result.success) {
       return {
         success: true,
         table: result.table || table,
-        message: result.message || `✅ ${table} envoyé !`,
+        message: result.message || `✅ ${table} envoyé !`
       }
     }
 
-    console.error('❌ GRIST RESPONSE KO:', result)
+    console.error('❌ GRIST KO:', result)
     return { success: false, error: result.error || 'API error' }
   }
   catch (error) {
     console.error('❌ FETCH ERROR:', error)
-    return { success: false, payload: gristPayload[0] }
+    return { success: false, payload }
   }
 }
 
@@ -238,7 +242,5 @@ function _closeStatus () {
 </template>
 
 <style scoped>
-.w-100 {
-  width: 100%;
-}
+
 </style>
