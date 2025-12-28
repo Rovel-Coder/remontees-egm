@@ -1,11 +1,10 @@
-// api/grist.post.ts - Grist numerique.gouv.fr + TypeScript parfait
+// api/grist.post.ts - CRCA + CRFM COMPLET
 const GRIST_DOC_ID = '287D12LdHqN4hYBpsm52fo'
 const GRIST_BASE_URL = 'https://grist.numerique.gouv.fr'
 
-// ✅ COLONNES GRIST CRCA EXACTES
 type GristField = string
 type RecordFields = Record<GristField, string>
-interface FrontendRecord { [key: string]: string | string[] | undefined | null }
+interface FrontendRecord { [key: string]: any }
 
 const CRCA_FIELDS: GristField[] = [
   'Secteur',
@@ -22,6 +21,54 @@ const CRCA_FIELDS: GristField[] = [
   'Materiel'
 ]
 
+const CRFM_FIELDS: GristField[] = [
+  'Date',
+  'Horaire',
+  'Secteur',
+  'Mission',
+  'VL_engagés',
+  'Effectifs',
+  'nbOad',
+  'controlesVl',
+  'controlesPersonne',
+  'caillassageTouchant',
+  'caillassageNonTouchant',
+  'refusAvecInterp',
+  'refusSansInterp',
+  'obstacle',
+  'feuHabitation',
+  'feuVoitures',
+  'feuAutres',
+  'papafTouchant',
+  'papafNonTouchant',
+  'grenMp7',
+  'grenCm6',
+  'grenGenlDmp',
+  'grenGm2l',
+  'grenGl304',
+  'munLbd40',
+  'mun9mm',
+  'mun556',
+  'mun762',
+  'stupCannabis',
+  'stupPlant',
+  'stupAutres',
+  'infraTa',
+  'infraDelits',
+  'interpZgn',
+  'interpZpn',
+  'nbInterCorgCic',
+  'nbInterInitiative',
+  'rensFrm',
+  'rensFrs',
+  'commentairePam'
+]
+
+const TABLE_FIELDS: Record<string, GristField[]> = {
+  CRCA: CRCA_FIELDS,
+  CRFM: CRFM_FIELDS
+}
+
 export async function POST (request: Request) {
   try {
     const body = await request.json()
@@ -29,13 +76,14 @@ export async function POST (request: Request) {
     // eslint-disable-next-line no-console
     console.log('🧪 GRIST API BODY:', JSON.stringify(body, null, 2))
 
-    if (body.table === 'CRCA' && Array.isArray(body.records)) {
-      const records: FrontendRecord[] = body.records
+    if (body.table && Array.isArray(body.records) && TABLE_FIELDS[body.table]) {
+      const { table, records } = body
+      const fields = TABLE_FIELDS[table]
 
-      // ✅ FILTRER + TYPPER colonnes existantes
+      // ✅ FILTRER colonnes table spécifique
       const validRecords: { fields: RecordFields }[] = records.map((record: FrontendRecord) => {
         const validFields: RecordFields = {}
-        CRCA_FIELDS.forEach((field: GristField) => {
+        fields.forEach((field: GristField) => {
           const value = record[field]
           if (value !== undefined && value !== null) {
             validFields[field] = Array.isArray(value) ? value.join(', ') : String(value)
@@ -45,10 +93,10 @@ export async function POST (request: Request) {
       })
 
       // eslint-disable-next-line no-console
-      console.log('✅ COLONNES FILTRÉES:', validRecords)
+      console.log(`🚀 ${validRecords.length} lignes → Table ${table}`)
 
       const gristResponse = await fetch(
-        `${GRIST_BASE_URL}/api/docs/${GRIST_DOC_ID}/tables/CRCA/records`,
+        `${GRIST_BASE_URL}/api/docs/${GRIST_DOC_ID}/tables/${table}/records`,
         {
           method: 'POST',
           headers: {
@@ -64,8 +112,8 @@ export async function POST (request: Request) {
       if (gristResponse.ok) {
         return new Response(JSON.stringify({
           success: true,
-          table: 'CRCA',
-          message: `✅ CRCA envoyé ! ${validRecords.length} lignes`,
+          table,
+          message: `✅ ${table} envoyé ! ${validRecords.length} lignes`,
           recordsAdded: validRecords.length
         }), {
           status: 200,
@@ -76,12 +124,12 @@ export async function POST (request: Request) {
       const gristError = await gristResponse.text()
 
       console.error('❌ GRIST ERROR:', gristError)
-      throw new Error(`Grist CRCA KO: ${gristResponse.status}`)
+      throw new Error(`Grist ${table} KO: ${gristResponse.status}`)
     }
 
     return new Response(JSON.stringify({
       success: false,
-      error: 'Table CRCA uniquement'
+      error: 'Table CRCA/CRFM uniquement'
     }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
