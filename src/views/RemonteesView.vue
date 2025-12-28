@@ -12,13 +12,32 @@ const statusTitle = ref('')
 const crcaFormData = reactive<Partial<CrcaModel>>({})
 const crfmFormData = reactive<Partial<CrfmModel>>({})
 
-// ✅ ENVOI AUTOMATIQUE GRIST - ESLint + TypeScript 100% clean
+// ✅ MAPPING GRIST PRÉCIS - ESLint clean
 async function sendToGrist (data: any, table: 'CRCA' | 'CRFM') {
+  const crcaMapping = {
+    Secteur: data.secteur,
+    Indic_Patrouille: (data.indicatifs || []).join(', '),
+    Intervention: data.intervention,
+    Nature_Intervention: data.natureIntervention,
+    Heure_debut_Intervention: data.heureDebut,
+    Heure_Fin_Intervention: data.heureFin,
+    PAM: data.pam,
+    Lieu: data.lieu,
+    Resume_Intervention: data.resume,
+    Personnel: data.personnel,
+    Armement: data.armement,
+    Materiel: data.materiel,
+  }
+
+  const crfmMapping = {
+    // TODO: Compléter avec colonnes CRFM
+  }
+
   const gristPayload = [{
-    ...data,
-    indicatifs: (data.indicatifs || []).join(', '),
+    ...(table === 'CRCA' ? crcaMapping : {}),
+    ...(table === 'CRFM' ? crfmMapping : {}),
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   }]
 
   // eslint-disable-next-line no-console
@@ -28,7 +47,7 @@ async function sendToGrist (data: any, table: 'CRCA' | 'CRFM') {
     const response = await fetch('/api/grist.post', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(gristPayload)
+      body: JSON.stringify(gristPayload),
     })
 
     // eslint-disable-next-line no-console
@@ -38,12 +57,11 @@ async function sendToGrist (data: any, table: 'CRCA' | 'CRFM') {
     // eslint-disable-next-line no-console
     console.log('📨 RESULT:', result)
 
-    // ✅ Vérification complète réponse Grist
     if (response.ok && (result.success === true || result.success === 'true')) {
       return {
         success: true,
         table: result.table || table,
-        message: result.message || `✅ ${table} envoyé !`
+        message: result.message || `✅ ${table} envoyé !`,
       }
     }
 
@@ -58,13 +76,13 @@ async function sendToGrist (data: any, table: 'CRCA' | 'CRFM') {
 
 async function submitCrca () {
   // eslint-disable-next-line no-console
-  console.log('📤 CRCA SUBMIT:', crcaFormData)
+  console.log('📤 CRCA SUBMIT:', JSON.parse(JSON.stringify(crcaFormData)))
   const result = await sendToGrist(crcaFormData, 'CRCA')
 
   if (result.success) {
     statusTitle.value = result.message || '✅ Succès CRCA'
     statusMessage.value = 'Remontée CRCA créée dans Grist !'
-    Object.assign(crcaFormData, {}) // Reset formulaire
+    Object.assign(crcaFormData, {})
   }
   else {
     statusTitle.value = '📋 Mode manuel'
@@ -74,13 +92,13 @@ async function submitCrca () {
 
 async function submitCrfm () {
   // eslint-disable-next-line no-console
-  console.log('📤 CRFM SUBMIT:', crfmFormData)
+  console.log('📤 CRFM SUBMIT:', JSON.parse(JSON.stringify(crfmFormData)))
   const result = await sendToGrist(crfmFormData, 'CRFM')
 
   if (result.success) {
     statusTitle.value = result.message || '✅ Succès CRFM'
     statusMessage.value = 'Remontée CRFM créée dans Grist !'
-    Object.assign(crfmFormData, {}) // Reset formulaire
+    Object.assign(crfmFormData, {})
   }
   else {
     statusTitle.value = '📋 Mode manuel'
@@ -88,7 +106,6 @@ async function submitCrfm () {
   }
 }
 
-// ✅ TOUTES VOS FONCTIONS TOGGLE INCHANGÉES
 function toggleCrca () {
   showCrca.value = !showCrca.value
 }
@@ -115,7 +132,6 @@ function handleCrfmClick () {
   resetCrca()
 }
 
-// Fonction fermer status (préfixée _ pour ESLint)
 function _closeStatus () {
   statusTitle.value = ''
   statusMessage.value = ''
@@ -222,5 +238,7 @@ function _closeStatus () {
 </template>
 
 <style scoped>
-
+.w-100 {
+  width: 100%;
+}
 </style>
