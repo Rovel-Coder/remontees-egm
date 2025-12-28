@@ -1,4 +1,10 @@
 <script setup lang="ts">
+// ✅ AJOUTE ÇA en haut de CrfmForm.vue
+import {
+  DsfrButton,
+  DsfrInput,
+  DsfrRadioButtonSet
+} from '@gouvminint/vue-dsfr'
 import { computed } from 'vue'
 
 type Horaire = '6-14' | '14-22' | '22-6' | ''

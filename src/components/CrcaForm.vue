@@ -1,4 +1,11 @@
 <script setup lang="ts">
+// ✅ IMPORTS DSFR AJOUTÉS
+import {
+  DsfrButton,
+  DsfrCheckbox,
+  DsfrInput,
+  DsfrRadioButtonSet
+} from '@gouvminint/vue-dsfr'
 import { computed } from 'vue'
 
 type Secteur = 'ALPHA' | 'BRAVO' | 'CHARLIE' | 'DELTA' | ''
@@ -245,7 +252,6 @@ function onSubmit (event: Event) {
       </div>
     </fieldset>
 
-    <!-- Reste du formulaire inchangé -->
     <DsfrRadioButtonSet
       :model-value="model.intervention"
       legend="Intervention *"

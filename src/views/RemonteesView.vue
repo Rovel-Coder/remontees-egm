@@ -1,70 +1,111 @@
 <script setup lang="ts">
+import type { CrcaModel, CrfmModel } from '@/types'
 import { reactive, ref } from 'vue'
+import CrcaForm from '@/components/CrcaForm.vue'
+import CrfmForm from '@/components/CrfmForm.vue'
 
 const showCrca = ref(false)
 const showCrfm = ref(false)
 const statusMessage = ref('')
 const statusTitle = ref('')
 
-const crcAFormData = reactive({
-  secteur: 'ALPHA',
-  indicatifs: 'A1',
-  intervention: 'INITIATIVE',
-  natureIntervention: '',
-  heureDebut: '00:00',
-  heureFin: '00:00',
-  lieu: '',
-  pam: 'PAM_RAS',
-  personnel: '',
-  armement: '',
-  materiel: '',
-  resume: ''
-})
-
-const crfmFormData = reactive({
-  secteur: ''
-})
+const crcaFormData = reactive<Partial<CrcaModel>>({})
+const crfmFormData = reactive<Partial<CrfmModel>>({})
 
 async function submitCrca () {
-  const formData = { ...crcAFormData }
-
-  console.warn('🚀 GRIST READY - Copier JSON ci-dessous dans Grist (ID: 287D12LdHqN4hYBpsm52fo)')
-  console.warn('JSON CRCA:', formData)
+  const formData = { ...crcaFormData }
+  const gristPayload = [{
+    ...formData,
+    indicatifs: (formData.indicatifs || []).join(','),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }]
 
   try {
-    const gristPayload = { records: [{ fields: formData }] }
-    const response = await fetch('/api/grist', {
+    const response = await fetch('/api/grist.post', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(gristPayload)
     })
 
-    if (response.ok) {
-      statusTitle.value = '✅ Succès'
-      statusMessage.value = 'Remontée CRCA créée dans Grist !'
-      showCrca.value = false
-      return
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
     }
+
+    const result = await response.json()
+    statusTitle.value = `✅ Succès ${result.table || 'CRCA'}`
+    statusMessage.value = `Remontée ${result.table || 'CRCA'} créée dans Grist !`
+    Object.assign(crcaFormData, {})
   }
   catch {
-    // API échouée
+    statusTitle.value = '📋 Mode manuel'
+    statusMessage.value = 'Copier JSON console pour Grist (ID: 287D12LdHqN4hYBpsm52fo)'
+    console.warn('🚀 GRIST READY - Copier JSON ci-dessous:', gristPayload)
   }
-
-  statusTitle.value = '📋 Mode manuel'
-  statusMessage.value = 'Copier JSON console pour Grist'
 }
 
-function submitCrfm () {
-  console.warn('CRFM:', crfmFormData)
-  statusTitle.value = '✅ CRFM'
-  statusMessage.value = 'Remontée CRFM enregistrée'
+async function submitCrfm () {
+  const formData = { ...crfmFormData }
+  const gristPayload = [{
+    ...formData,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }]
+
+  try {
+    const response = await fetch('/api/grist.post', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(gristPayload)
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+
+    const result = await response.json()
+    statusTitle.value = `✅ Succès ${result.table || 'CRFM'}`
+    statusMessage.value = `Remontée ${result.table || 'CRFM'} créée dans Grist !`
+    Object.assign(crfmFormData, {})
+  }
+  catch {
+    statusTitle.value = '📋 Mode manuel'
+    statusMessage.value = 'Copier JSON console pour Grist table CRFM'
+    console.warn('🚀 GRIST READY - Copier JSON ci-dessous:', gristPayload)
+  }
+}
+
+// ✅ ESLINT OK - 1 statement par ligne
+function toggleCrca () {
+  showCrca.value = !showCrca.value
+}
+
+function resetCrfm () {
   showCrfm.value = false
+}
+
+function toggleCrfm () {
+  showCrfm.value = !showCrfm.value
+}
+
+function resetCrca () {
+  showCrca.value = false
+}
+
+function handleCrcaClick () {
+  toggleCrca()
+  resetCrfm()
+}
+
+function handleCrfmClick () {
+  toggleCrfm()
+  resetCrca()
 }
 </script>
 
 <template>
   <div class="fr-container fr-mt-5w fr-mb-5w">
-    <!-- Header Gendarmerie NC SIMPLIFIÉ (NO LOGO) -->
+    <!-- Header Gendarmerie NC -->
     <div class="fr-header__body">
       <div class="fr-container">
         <div class="fr-header__body-row">
@@ -82,298 +123,72 @@ function submitCrfm () {
       </div>
     </div>
 
-    <!-- Boutons DSFR ALIGNÉS PARFAIT -->
-    <div class="fr-grid-row fr-grid-row--center fr-py-4w">
-      <div class="fr-col-12 fr-col-md-6 fr-col-lg-4 fr-col-xl-3">
-        <div class="fr-grid-row fr-grid-row--center">
-          <div class="fr-col-xs-12 fr-col-md-6">
-            <button
-              class="fr-btn fr-btn--primary fr-mb-2w"
-              @click="showCrca = true"
-            >
-              📋 Nouvelle remontée CRCA
-            </button>
-          </div>
-          <div class="fr-col-xs-12 fr-col-md-6">
-            <button
-              class="fr-btn fr-btn--secondary fr-mb-2w"
-              @click="showCrfm = true"
-            >
-              📋 Nouvelle remontée CRFM
-            </button>
-          </div>
-        </div>
+    <!-- ✅ BOUTONS DSFR CENTRÉS -->
+    <div class="fr-grid-row fr-grid-row--center fr-grid-row--gutters fr-mt-4w fr-mb-5w">
+      <div class="fr-col-12 fr-col-md-5 fr-col-lg-4">
+        <button
+          class="fr-btn fr-btn--primary w-100"
+          @click="handleCrcaClick"
+        >
+          📋 Remontée CRCA
+        </button>
+      </div>
+      <div class="fr-col-12 fr-col-md-5 fr-col-lg-4">
+        <button
+          class="fr-btn fr-btn--secondary w-100"
+          @click="handleCrfmClick"
+        >
+          📋 Remontée CRFM
+        </button>
       </div>
     </div>
 
-    <!-- Status DSFR natif -->
+    <!-- ✅ FORMULAIRES SIMPLES - SANS CARDS -->
+    <div
+      v-if="showCrca"
+      class="fr-mb-5w"
+    >
+      <div class="fr-fieldset">
+        <legend class="fr-fieldset__legend fr-h3">
+          📋 Nouvelle remontée CRCA
+        </legend>
+        <CrcaForm
+          v-model="crcaFormData"
+          @submit="submitCrca"
+        />
+      </div>
+    </div>
+
+    <div
+      v-if="showCrfm"
+      class="fr-mb-5w"
+    >
+      <div class="fr-fieldset">
+        <legend class="fr-fieldset__legend fr-h3">
+          📋 Nouvelle remontée CRFM
+        </legend>
+        <CrfmForm
+          v-model="crfmFormData"
+          @submit="submitCrfm"
+        />
+      </div>
+    </div>
+
+    <!-- Status -->
     <div
       v-if="statusMessage"
-      class="fr-mt-3w"
+      class="fr-mt-5w"
     >
-      <div class="fr-alert fr-alert--success fr-mb-3w">
+      <div class="fr-alert fr-alert--success">
         <p class="fr-alert__title">
           {{ statusTitle }}
         </p>
         <p>{{ statusMessage }}</p>
       </div>
     </div>
-
-    <!-- Modal CRCA DSFR natif -->
-    <div
-      v-if="showCrca"
-      class="fr-modal-overlay"
-      @click.self="showCrca = false"
-    >
-      <div class="fr-container fr-modal-container">
-        <div class="fr-modal">
-          <div class="fr-modal__header">
-            <button
-              class="fr-btn fr-btn--close-modal"
-              @click="showCrca = false"
-            >
-              Fermer
-            </button>
-            <h1 class="fr-modal__title">
-              📋 Nouvelle remontée CRCA
-            </h1>
-          </div>
-          <form @submit.prevent="submitCrca">
-            <fieldset class="fr-fieldset">
-              <legend class="fr-fieldset__legend fr-text--lead">
-                Détails intervention
-              </legend>
-
-              <div class="fr-field-row">
-                <label
-                  class="fr-label"
-                  for="secteur"
-                >Secteur</label>
-                <select
-                  id="secteur"
-                  v-model="crcAFormData.secteur"
-                  class="fr-select"
-                >
-                  <option value="ALPHA">
-                    ALPHA
-                  </option>
-                  <option value="BETA">
-                    BETA
-                  </option>
-                  <option value="GAMMA">
-                    GAMMA
-                  </option>
-                </select>
-              </div>
-
-              <div class="fr-field-row">
-                <label
-                  class="fr-label"
-                  for="indicatifs"
-                >Indicatifs</label>
-                <input
-                  id="indicatifs"
-                  v-model="crcAFormData.indicatifs"
-                  placeholder="A1"
-                  class="fr-input"
-                >
-              </div>
-
-              <div class="fr-field-row--md">
-                <div class="fr-col">
-                  <label
-                    class="fr-label"
-                    for="intervention"
-                  >Intervention</label>
-                  <select
-                    id="intervention"
-                    v-model="crcAFormData.intervention"
-                    class="fr-select"
-                  >
-                    <option value="INITIATIVE">
-                      INITIATIVE
-                    </option>
-                    <option value="INTERVENTION">
-                      INTERVENTION
-                    </option>
-                  </select>
-                </div>
-                <div class="fr-col">
-                  <label
-                    class="fr-label"
-                    for="natureIntervention"
-                  >Nature</label>
-                  <input
-                    id="natureIntervention"
-                    v-model="crcAFormData.natureIntervention"
-                    class="fr-input"
-                  >
-                </div>
-              </div>
-
-              <div class="fr-field-row--md">
-                <div class="fr-col">
-                  <label
-                    class="fr-label"
-                    for="heureDebut"
-                  >Heure début</label>
-                  <input
-                    id="heureDebut"
-                    v-model="crcAFormData.heureDebut"
-                    type="time"
-                    class="fr-input"
-                  >
-                </div>
-                <div class="fr-col">
-                  <label
-                    class="fr-label"
-                    for="heureFin"
-                  >Heure fin</label>
-                  <input
-                    id="heureFin"
-                    v-model="crcAFormData.heureFin"
-                    type="time"
-                    class="fr-input"
-                  >
-                </div>
-              </div>
-
-              <div class="fr-field-row">
-                <label
-                  class="fr-label"
-                  for="lieu"
-                >Lieu</label>
-                <input
-                  id="lieu"
-                  v-model="crcAFormData.lieu"
-                  class="fr-input"
-                >
-              </div>
-
-              <div class="fr-field-row">
-                <label
-                  class="fr-label"
-                  for="pam"
-                >PAM</label>
-                <select
-                  id="pam"
-                  v-model="crcAFormData.pam"
-                  class="fr-select"
-                >
-                  <option value="PAM_RAS">
-                    PAM_RAS
-                  </option>
-                  <option value="PAM_ENGAGES">
-                    PAM_ENGAGES
-                  </option>
-                </select>
-              </div>
-
-              <div class="fr-field-row">
-                <label
-                  class="fr-label"
-                  for="resume"
-                >Résumé</label>
-                <textarea
-                  id="resume"
-                  v-model="crcAFormData.resume"
-                  rows="3"
-                  class="fr-textarea"
-                />
-              </div>
-
-              <div class="fr-field-row fr-grid-row--right">
-                <button
-                  type="submit"
-                  class="fr-btn fr-btn--primary"
-                >
-                  ✅ Envoyer vers Grist
-                </button>
-              </div>
-            </fieldset>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal CRFM -->
-    <div
-      v-if="showCrfm"
-      class="fr-modal-overlay"
-      @click.self="showCrfm = false"
-    >
-      <div class="fr-container fr-modal-container">
-        <div class="fr-modal">
-          <div class="fr-modal__header">
-            <button
-              class="fr-btn fr-btn--close-modal"
-              @click="showCrfm = false"
-            >
-              Fermer
-            </button>
-            <h1 class="fr-modal__title">
-              📋 Nouvelle remontée CRFM
-            </h1>
-          </div>
-          <form @submit.prevent="submitCrfm">
-            <div class="fr-field-row">
-              <label
-                class="fr-label"
-                for="crfm-secteur"
-              >Secteur</label>
-              <input
-                id="crfm-secteur"
-                v-model="crfmFormData.secteur"
-                class="fr-input"
-              >
-            </div>
-            <div class="fr-field-row fr-grid-row--right">
-              <button
-                type="submit"
-                class="fr-btn fr-btn--primary"
-              >
-                ✅ Envoyer
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <style scoped>
-.fr-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-}
 
-.fr-modal-container {
-  max-width: 80%;
-  max-height: 90vh;
-}
-
-.fr-modal {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.fr-modal__header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e5e5;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.fr-btn--close-modal {
-  margin: -0.75rem;
-}
 </style>
