@@ -6,10 +6,9 @@ const showCrfm = ref(false)
 const statusMessage = ref('')
 const statusTitle = ref('')
 
-// Formulaires réactifs
 const crcAFormData = reactive({
   secteur: 'ALPHA',
-  indicatifs: [] as string[],
+  indicatifs: 'A1',
   intervention: 'INITIATIVE',
   natureIntervention: '',
   heureDebut: '00:00',
@@ -26,94 +25,51 @@ const crfmFormData = reactive({
   secteur: ''
 })
 
-// SUBMIT GRIST API AUTO (fetch natif)
 async function submitCrca () {
   const formData = { ...crcAFormData }
 
-  // Format EXACT Grist API
-  const gristPayload = {
-    records: [{
-      fields: {
-        secteur: formData.secteur,
-        indicatifs: Array.isArray(formData.indicatifs) ? formData.indicatifs.join(',') : formData.indicatifs,
-        intervention: formData.intervention,
-        natureIntervention: formData.natureIntervention,
-        heureDebut: formData.heureDebut,
-        heureFin: formData.heureFin,
-        lieu: formData.lieu,
-        pam: formData.pam,
-        personnel: formData.personnel || '',
-        armement: formData.armement || '',
-        materiel: formData.materiel || '',
-        resume: formData.resume
-      }
-    }]
-  }
+  console.warn('🚀 GRIST READY - Copier JSON ci-dessous dans Grist (ID: 287D12LdHqN4hYBpsm52fo)')
+  console.warn('JSON CRCA:', formData)
 
   try {
+    const gristPayload = { records: [{ fields: formData }] }
     const response = await fetch('/api/grist', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(gristPayload)
     })
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
+    if (response.ok) {
+      statusTitle.value = '✅ Succès'
+      statusMessage.value = 'Remontée CRCA créée dans Grist !'
+      showCrca.value = false
+      return
     }
-
-    statusTitle.value = '✅ Succès'
-    statusMessage.value = 'Remontée CRCA créée dans Grist !'
-    showCrca.value = false
-
-    // Reset formulaire
-    Object.assign(crcAFormData, {
-      secteur: 'ALPHA',
-      indicatifs: [],
-      intervention: 'INITIATIVE',
-      natureIntervention: '',
-      heureDebut: '00:00',
-      heureFin: '00:00',
-      lieu: '',
-      pam: 'PAM_RAS',
-      personnel: '',
-      armement: '',
-      materiel: '',
-      resume: ''
-    })
   }
   catch {
-    statusTitle.value = '📋 Mode manuel'
-    statusMessage.value = 'Copier JSON console pour Grist (ID: 287D12LdHqN4hYBpsm52fo)'
-
-    console.warn('🚀 GRIST READY - Copier JSON ci-dessous')
-    console.warn('JSON CRCA:', formData)
-    console.warn('JSON Grist API:', gristPayload)
+    // API échouée
   }
+
+  statusTitle.value = '📋 Mode manuel'
+  statusMessage.value = 'Copier JSON console pour Grist'
 }
 
-async function submitCrfm () {
-  console.warn('CRFM submit:', crfmFormData)
+function submitCrfm () {
+  console.warn('CRFM:', crfmFormData)
   statusTitle.value = '✅ CRFM'
-  statusMessage.value = 'Remontée CRFM enregistrée (console)'
+  statusMessage.value = 'Remontée CRFM enregistrée'
   showCrfm.value = false
 }
 </script>
 
 <template>
   <div class="fr-container fr-mt-5w fr-mb-5w">
-    <!-- Header Gendarmerie NC -->
+    <!-- Header Gendarmerie NC SIMPLIFIÉ (NO LOGO) -->
     <div class="fr-header__body">
       <div class="fr-container">
         <div class="fr-header__body-row">
           <div class="fr-header__brand">
             <div class="fr-header__brand-top">
-              <div class="fr-header__logo">
-                <p class="fr-logo">
-                  République<br>Française
-                </p>
-              </div>
               <div class="fr-header__navbar">
                 <p class="fr-header__service">
                   <span class="fr-header__service-tagline">Gendarmerie</span>
@@ -126,221 +82,298 @@ async function submitCrfm () {
       </div>
     </div>
 
-    <!-- Boutons principales -->
-    <div class="fr-grid-row fr-grid-row--center">
-      <div class="fr-col-12 fr-col-md-6 fr-col-lg-4">
-        <DsfrButton
-          class="fr-mb-3w"
-          @click="showCrca = true"
-        >
-          📋 Nouvelle remontée CRCA
-        </DsfrButton>
-        <DsfrButton
-          variant="secondary"
-          class="fr-mb-3w"
-          @click="showCrfm = true"
-        >
-          📋 Nouvelle remontée CRFM
-        </DsfrButton>
+    <!-- Boutons DSFR ALIGNÉS PARFAIT -->
+    <div class="fr-grid-row fr-grid-row--center fr-py-4w">
+      <div class="fr-col-12 fr-col-md-6 fr-col-lg-4 fr-col-xl-3">
+        <div class="fr-grid-row fr-grid-row--center">
+          <div class="fr-col-xs-12 fr-col-md-6">
+            <button
+              class="fr-btn fr-btn--primary fr-mb-2w"
+              @click="showCrca = true"
+            >
+              📋 Nouvelle remontée CRCA
+            </button>
+          </div>
+          <div class="fr-col-xs-12 fr-col-md-6">
+            <button
+              class="fr-btn fr-btn--secondary fr-mb-2w"
+              @click="showCrfm = true"
+            >
+              📋 Nouvelle remontée CRFM
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Messages de statut -->
+    <!-- Status DSFR natif -->
     <div
       v-if="statusMessage"
       class="fr-mt-3w"
     >
-      <DsfrAlert
-        :title="statusTitle"
-        :description="statusMessage"
-      />
+      <div class="fr-alert fr-alert--success fr-mb-3w">
+        <p class="fr-alert__title">
+          {{ statusTitle }}
+        </p>
+        <p>{{ statusMessage }}</p>
+      </div>
     </div>
 
-    <!-- Formulaire CRCA -->
-    <DsfrModal
-      v-model="showCrca"
-      title="📋 Nouvelle remontée CRCA"
+    <!-- Modal CRCA DSFR natif -->
+    <div
+      v-if="showCrca"
+      class="fr-modal-overlay"
+      @click.self="showCrca = false"
     >
-      <form
-        class="fr-col-12"
-        @submit.prevent="submitCrca"
-      >
-        <div class="fr-fieldset">
-          <DsfrFieldset legend="Détails intervention">
-            <div class="fr-field-row">
-              <label
-                class="fr-label"
-                for="secteur"
-              >Secteur</label>
-              <DsfrSelect
-                id="secteur"
-                v-model="crcAFormData.secteur"
-              >
-                <option value="ALPHA">
-                  ALPHA
-                </option>
-                <option value="BETA">
-                  BETA
-                </option>
-                <option value="GAMMA">
-                  GAMMA
-                </option>
-              </DsfrSelect>
-            </div>
-
-            <div class="fr-field-row">
-              <label
-                class="fr-label"
-                for="indicatifs"
-              >Indicatifs</label>
-              <DsfrInputMultiple
-                id="indicatifs"
-                v-model="crcAFormData.indicatifs"
-                placeholder="A1"
-              />
-            </div>
-
-            <div class="fr-field-row--md">
-              <div class="fr-col">
-                <label
-                  class="fr-label"
-                  for="intervention"
-                >Intervention</label>
-                <DsfrSelect
-                  id="intervention"
-                  v-model="crcAFormData.intervention"
-                >
-                  <option value="INITIATIVE">
-                    INITIATIVE
-                  </option>
-                  <option value="INTERVENTION">
-                    INTERVENTION
-                  </option>
-                </DsfrSelect>
-              </div>
-              <div class="fr-col">
-                <label
-                  class="fr-label"
-                  for="natureIntervention"
-                >Nature</label>
-                <DsfrInput
-                  id="natureIntervention"
-                  v-model="crcAFormData.natureIntervention"
-                />
-              </div>
-            </div>
-
-            <div class="fr-field-row--md">
-              <div class="fr-col">
-                <label
-                  class="fr-label"
-                  for="heureDebut"
-                >Heure début</label>
-                <DsfrInput
-                  id="heureDebut"
-                  v-model="crcAFormData.heureDebut"
-                  type="time"
-                />
-              </div>
-              <div class="fr-col">
-                <label
-                  class="fr-label"
-                  for="heureFin"
-                >Heure fin</label>
-                <DsfrInput
-                  id="heureFin"
-                  v-model="crcAFormData.heureFin"
-                  type="time"
-                />
-              </div>
-            </div>
-
-            <div class="fr-field-row">
-              <label
-                class="fr-label"
-                for="lieu"
-              >Lieu</label>
-              <DsfrInput
-                id="lieu"
-                v-model="crcAFormData.lieu"
-              />
-            </div>
-
-            <div class="fr-field-row">
-              <label
-                class="fr-label"
-                for="pam"
-              >PAM</label>
-              <DsfrSelect
-                id="pam"
-                v-model="crcAFormData.pam"
-              >
-                <option value="PAM_RAS">
-                  PAM_RAS
-                </option>
-                <option value="PAM_ENGAGES">
-                  PAM_ENGAGES
-                </option>
-              </DsfrSelect>
-            </div>
-
-            <div class="fr-field-row">
-              <label
-                class="fr-label"
-                for="resume"
-              >Résumé</label>
-              <DsfrTextarea
-                id="resume"
-                v-model="crcAFormData.resume"
-                rows="3"
-              />
-            </div>
-          </DsfrFieldset>
-
-          <div class="fr-field-row">
-            <DsfrButton
-              type="submit"
-              primary
+      <div class="fr-container fr-modal-container">
+        <div class="fr-modal">
+          <div class="fr-modal__header">
+            <button
+              class="fr-btn fr-btn--close-modal"
+              @click="showCrca = false"
             >
-              ✅ Envoyer vers Grist
-            </DsfrButton>
+              Fermer
+            </button>
+            <h1 class="fr-modal__title">
+              📋 Nouvelle remontée CRCA
+            </h1>
           </div>
-        </div>
-      </form>
-    </DsfrModal>
+          <form @submit.prevent="submitCrca">
+            <fieldset class="fr-fieldset">
+              <legend class="fr-fieldset__legend fr-text--lead">
+                Détails intervention
+              </legend>
 
-    <!-- Formulaire CRFM -->
-    <DsfrModal
-      v-model="showCrfm"
-      title="📋 Nouvelle remontée CRFM"
+              <div class="fr-field-row">
+                <label
+                  class="fr-label"
+                  for="secteur"
+                >Secteur</label>
+                <select
+                  id="secteur"
+                  v-model="crcAFormData.secteur"
+                  class="fr-select"
+                >
+                  <option value="ALPHA">
+                    ALPHA
+                  </option>
+                  <option value="BETA">
+                    BETA
+                  </option>
+                  <option value="GAMMA">
+                    GAMMA
+                  </option>
+                </select>
+              </div>
+
+              <div class="fr-field-row">
+                <label
+                  class="fr-label"
+                  for="indicatifs"
+                >Indicatifs</label>
+                <input
+                  id="indicatifs"
+                  v-model="crcAFormData.indicatifs"
+                  placeholder="A1"
+                  class="fr-input"
+                >
+              </div>
+
+              <div class="fr-field-row--md">
+                <div class="fr-col">
+                  <label
+                    class="fr-label"
+                    for="intervention"
+                  >Intervention</label>
+                  <select
+                    id="intervention"
+                    v-model="crcAFormData.intervention"
+                    class="fr-select"
+                  >
+                    <option value="INITIATIVE">
+                      INITIATIVE
+                    </option>
+                    <option value="INTERVENTION">
+                      INTERVENTION
+                    </option>
+                  </select>
+                </div>
+                <div class="fr-col">
+                  <label
+                    class="fr-label"
+                    for="natureIntervention"
+                  >Nature</label>
+                  <input
+                    id="natureIntervention"
+                    v-model="crcAFormData.natureIntervention"
+                    class="fr-input"
+                  >
+                </div>
+              </div>
+
+              <div class="fr-field-row--md">
+                <div class="fr-col">
+                  <label
+                    class="fr-label"
+                    for="heureDebut"
+                  >Heure début</label>
+                  <input
+                    id="heureDebut"
+                    v-model="crcAFormData.heureDebut"
+                    type="time"
+                    class="fr-input"
+                  >
+                </div>
+                <div class="fr-col">
+                  <label
+                    class="fr-label"
+                    for="heureFin"
+                  >Heure fin</label>
+                  <input
+                    id="heureFin"
+                    v-model="crcAFormData.heureFin"
+                    type="time"
+                    class="fr-input"
+                  >
+                </div>
+              </div>
+
+              <div class="fr-field-row">
+                <label
+                  class="fr-label"
+                  for="lieu"
+                >Lieu</label>
+                <input
+                  id="lieu"
+                  v-model="crcAFormData.lieu"
+                  class="fr-input"
+                >
+              </div>
+
+              <div class="fr-field-row">
+                <label
+                  class="fr-label"
+                  for="pam"
+                >PAM</label>
+                <select
+                  id="pam"
+                  v-model="crcAFormData.pam"
+                  class="fr-select"
+                >
+                  <option value="PAM_RAS">
+                    PAM_RAS
+                  </option>
+                  <option value="PAM_ENGAGES">
+                    PAM_ENGAGES
+                  </option>
+                </select>
+              </div>
+
+              <div class="fr-field-row">
+                <label
+                  class="fr-label"
+                  for="resume"
+                >Résumé</label>
+                <textarea
+                  id="resume"
+                  v-model="crcAFormData.resume"
+                  rows="3"
+                  class="fr-textarea"
+                />
+              </div>
+
+              <div class="fr-field-row fr-grid-row--right">
+                <button
+                  type="submit"
+                  class="fr-btn fr-btn--primary"
+                >
+                  ✅ Envoyer vers Grist
+                </button>
+              </div>
+            </fieldset>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal CRFM -->
+    <div
+      v-if="showCrfm"
+      class="fr-modal-overlay"
+      @click.self="showCrfm = false"
     >
-      <form
-        class="fr-col-12"
-        @submit.prevent="submitCrfm"
-      >
-        <div class="fr-fieldset">
-          <DsfrFieldset legend="Détails mission CRFM">
+      <div class="fr-container fr-modal-container">
+        <div class="fr-modal">
+          <div class="fr-modal__header">
+            <button
+              class="fr-btn fr-btn--close-modal"
+              @click="showCrfm = false"
+            >
+              Fermer
+            </button>
+            <h1 class="fr-modal__title">
+              📋 Nouvelle remontée CRFM
+            </h1>
+          </div>
+          <form @submit.prevent="submitCrfm">
             <div class="fr-field-row">
               <label
                 class="fr-label"
                 for="crfm-secteur"
               >Secteur</label>
-              <DsfrInput
+              <input
                 id="crfm-secteur"
                 v-model="crfmFormData.secteur"
-              />
-            </div>
-            <div class="fr-field-row">
-              <DsfrButton
-                type="submit"
-                primary
+                class="fr-input"
               >
-                ✅ Envoyer vers Grist
-              </DsfrButton>
             </div>
-          </DsfrFieldset>
+            <div class="fr-field-row fr-grid-row--right">
+              <button
+                type="submit"
+                class="fr-btn fr-btn--primary"
+              >
+                ✅ Envoyer
+              </button>
+            </div>
+          </form>
         </div>
-      </form>
-    </DsfrModal>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.fr-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.fr-modal-container {
+  max-width: 80%;
+  max-height: 90vh;
+}
+
+.fr-modal {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.fr-modal__header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e5e5;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.fr-btn--close-modal {
+  margin: -0.75rem;
+}
+</style>
