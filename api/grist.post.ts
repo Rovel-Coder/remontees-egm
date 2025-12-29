@@ -1,29 +1,50 @@
-// api/grist.post.ts - 100% ESLint/TypeScript clean
-import process from 'node:process' // ✅ Fix ESLint ts/no-require-imports
+// api/grist.post.ts - VERSION DEBUG MAX
+import process from 'node:process'
 
 export default async function handler (req: any, res: any) {
   try {
-    console.warn('🔍 API GRIST - Requête CRFM reçue')
+    console.warn('🔍 API GRIST - START')
+    console.warn('📋 req.method:', req.method)
+    console.warn('📋 req.body type:', typeof req.body)
+    console.warn('📋 req.body:', req.body)
 
-    // Vérifier méthode POST
     if (req.method !== 'POST') {
+      console.error('❌ Méthode non POST:', req.method)
       return res.status(405).json({ error: 'Méthode POST requise' })
     }
 
-    const data = await req.json()
-    console.warn('🔍 Données CRFM reçues:', data)
+    // ✅ DEBUG : Forcer parsing JSON si besoin
+    let data
+    if (typeof req.body === 'string') {
+      data = JSON.parse(req.body)
+    }
+    else if (typeof req.body === 'object' && req.body !== null) {
+      data = req.body
+    }
+    else {
+      console.error('❌ req.body invalide:', req.body)
+      return res.status(400).json({ error: 'Données invalides', body: req.body })
+    }
+
+    console.warn('✅ Données parsées:', data)
 
     const GRIST_DOC_ID = '287D12LdHqN4hYBpsm52fo'
     const GRIST_API_KEY = process.env.GRIST_API_KEY
+    console.warn('🔑 GRIST_API_KEY existe:', !!GRIST_API_KEY)
+    console.warn('🔑 GRIST_API_KEY length:', GRIST_API_KEY?.length || 0)
+
     const GRIST_SERVER = 'https://grist.numerique.gouv.fr'
 
     if (!GRIST_API_KEY) {
-      const error = new Error('GRIST_API_KEY manquante dans les variables d\'environnement')
-      console.error('❌ ERREUR API GRIST:', error.message)
-      return res.status(500).json({ error: error.message })
+      console.error('❌ GRIST_API_KEY MANQUANTE!')
+      return res.status(500).json({
+        error: 'GRIST_API_KEY manquante dans Vercel Environment Variables',
+        hasKey: !!GRIST_API_KEY,
+        envKeys: Object.keys(process.env).filter(k => k.includes('GRIST'))
+      })
     }
 
-    // ✅ Conversion complète strings → numbers + mapping snake_case
+    // ✅ Conversion complète
     const gristData = [{
       date: data.date || '',
       horaire: data.horaire || '',
@@ -67,7 +88,7 @@ export default async function handler (req: any, res: any) {
       commentaire_pam: data.commentairePam || ''
     }]
 
-    console.warn('📤 Données formatées pour Grist:', gristData[0])
+    console.warn('📤 Envoi à Grist:', gristData[0])
 
     const response = await fetch(
       `${GRIST_SERVER}/o/api/docs/${GRIST_DOC_ID}/tables/CRFM/records/`,
@@ -82,29 +103,28 @@ export default async function handler (req: any, res: any) {
     )
 
     const result = await response.json()
+    console.warn('📥 Grist response:', response.status, result)
 
     if (!response.ok) {
-      const error = new Error(`Grist API erreur ${response.status}: ${JSON.stringify(result)}`)
-      console.error('❌ ERREUR GRIST:', error.message)
+      console.error('❌ GRIST ERROR:', response.status, result)
       return res.status(500).json({
-        error: error.message,
-        gristStatus: response.status,
-        gristResponse: result
+        error: `Grist ${response.status}`,
+        details: result
       })
     }
 
-    console.warn('✅ Grist succès:', result)
+    console.warn('✅ SUCCÈS TOTAL!')
     return res.status(200).json({
       success: true,
-      message: 'CRFM enregistré avec succès',
-      gristId: result.ids || result.id || 'OK',
-      recordCount: result.rowCount || 1
+      message: 'CRFM enregistré !',
+      inserted: result.ids || result.id || 1
     })
   }
   catch (error) {
-    console.error('❌ ERREUR CRITIQUE API GRIST:', (error as Error).message)
+    console.error('❌ CRASH TOTAL:', error)
     return res.status(500).json({
-      error: (error as Error).message || 'Erreur inconnue',
+      error: (error as Error).message || 'Erreur serveur',
+      stack: (error as Error).stack,
       timestamp: new Date().toISOString()
     })
   }
