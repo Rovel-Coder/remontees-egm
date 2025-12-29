@@ -133,9 +133,9 @@ function onSubmit (event: Event) {
           v-model="model.horaire"
           legend="Horaires *"
           :options="[
-            { label: '6h - 14h', value: '6-14' },
-            { label: '14h - 22h', value: '14-22' },
-            { label: '22h - 6h', value: '22-6' },
+            { label: '6h - 14h', value: '6h - 14h' },
+            { label: '14h - 22h', value: '14h - 22h' },
+            { label: '22h - 6h', value: '22h - 6h' },
           ]"
           required
         />
@@ -160,7 +160,7 @@ function onSubmit (event: Event) {
           :options="[
             { label: 'CTRZ', value: 'CTRZ' },
             { label: 'OAD', value: 'OAD' },
-            { label: 'MO/RO', value: 'MORO' },
+            { label: 'MO/RO', value: 'MO/RO' },
             { label: 'SECURISATION', value: 'SECURISATION' },
             { label: 'RI', value: 'RI' },
           ]"
