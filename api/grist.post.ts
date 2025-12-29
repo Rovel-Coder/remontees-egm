@@ -1,4 +1,4 @@
-// api/grist.post.ts - CRFM + CRCA - NOMS EXACTS GRIST
+// api/grist.post.ts - Configuration via variables d'environnement
 import process from 'node:process'
 
 export default async function handler (req: any, res: any) {
@@ -17,21 +17,24 @@ export default async function handler (req: any, res: any) {
 
     console.warn('✅ Record extrait:', record)
 
-    const GRIST_DOC_ID = '287D12LdHqN4hYBpsm52fo'
+    // 📋 CONFIGURATION VIA VARIABLES D'ENVIRONNEMENT
+    const GRIST_SERVER = process.env.GRIST_SERVER || 'https://grist.numerique.gouv.fr'
+    const GRIST_DOC_ID = process.env.GRIST_DOC_ID || '287D12LdHqN4hYBpsm52fo'
     const GRIST_API_KEY = process.env.GRIST_API_KEY
-    const GRIST_SERVER = 'https://grist.numerique.gouv.fr'
+    const CRFM_TABLE = process.env.GRIST_TABLE_CRFM || 'CRFM'
+    const CRCA_TABLE = process.env.GRIST_TABLE_CRCA || 'CRCA'
 
     if (!GRIST_API_KEY) {
       return res.status(500).json({ error: 'GRIST_API_KEY manquante' })
     }
 
-    const tableName = parsedBody.table || 'CRFM'
+    const tableName = parsedBody.table || CRFM_TABLE
     console.warn('📊 Table cible:', tableName)
 
     let gristFields
 
-    // 🎯 CRFM - COMPLÈT (exemple précédent)
-    if (tableName === 'CRFM') {
+    // 🎯 CRFM - NOMS EXACTS GRIST
+    if (tableName === CRFM_TABLE) {
       gristFields = {
         Date: record.date || '',
         Secteur: record.secteur || '',
@@ -76,8 +79,8 @@ export default async function handler (req: any, res: any) {
         Commentaire: record.commentairePam || ''
       }
     }
-    // 🎯 CRCA - NOMS EXACTS (votre curl exemple)
-    else if (tableName === 'CRCA') {
+    // 🎯 CRCA - NOMS EXACTS GRIST
+    else if (tableName === CRCA_TABLE) {
       gristFields = {
         Indic_Patrouille: record.indicPatrouille || '',
         Intervention: record.intervention || '',
@@ -88,31 +91,31 @@ export default async function handler (req: any, res: any) {
         Lieu: record.lieu || '',
         Resume_Intervention: record.resumeIntervention || '',
         PAM: record.pam || '',
-        // Traite exclu comme demandé
         Personnel: record.personnel || '',
         Armement: record.armement || '',
         Materiel: record.materiel || ''
       }
     }
     else {
-      return res.status(400).json({ error: 'Table: CRCA ou CRFM requis' })
+      return res.status(400).json({ error: `Table ${tableName} non supportée. Utilisez ${CRFM_TABLE} ou ${CRCA_TABLE}` })
     }
 
     const gristData = { records: [{ fields: gristFields }] }
     console.warn('📤 Envoi GRIST:', tableName, gristFields)
 
-    // ✅ CORRECTION : URL API correcte pour Grist France
-    const response = await fetch(
-      `${GRIST_SERVER}/${GRIST_DOC_ID}/${tableName}/records/`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${GRIST_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(gristData)
-      }
-    )
+    // 🔗 ENDPOINT OFFICIEL GRIST FRANCE (confirmé par vos curls)
+    const url = `${GRIST_SERVER}/api/docs/${GRIST_DOC_ID}/tables/${tableName}/records`
+    console.warn('🔗 URL GÉNÉRÉE:', url)
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GRIST_API_KEY}`,
+        'Content-Type': 'application/json',
+        'accept': 'application/json'
+      },
+      body: JSON.stringify(gristData)
+    })
 
     if (!response.ok) {
       const text = await response.text()
@@ -121,6 +124,7 @@ export default async function handler (req: any, res: any) {
         error: `Grist ${response.status}`,
         details: text.substring(0, 500),
         table: tableName,
+        url,
         sent: gristData
       })
     }
