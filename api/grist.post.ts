@@ -1,4 +1,4 @@
-// api/grist.post.ts - Configuration via variables d'environnement
+// api/grist.post.ts - Configuration via variables d'environnement + FIX indicatifs
 import process from 'node:process'
 
 export default async function handler (req: any, res: any) {
@@ -79,17 +79,20 @@ export default async function handler (req: any, res: any) {
         Commentaire: record.commentairePam || ''
       }
     }
-    // 🎯 CRCA - NOMS EXACTS GRIST
+    // 🎯 CRCA - NOMS EXACTS GRIST + ✅ FIX INDICATIFS
     else if (tableName === CRCA_TABLE) {
       gristFields = {
-        Indic_Patrouille: record.indicPatrouille || '',
+        // ✅ FIX : Tableau indicatifs → string comma-separated
+        Indic_Patrouille: Array.isArray(record.indicatifs)
+          ? record.indicatifs.join(', ')
+          : record.indicPatrouille || record.indicatifs || '',
         Intervention: record.intervention || '',
         Secteur: record.secteur || '',
         Nature_Intervention: record.natureIntervention || '',
         Heure_debut_Intervention: record.heureDebut || '',
         Heure_Fin_Intervention: record.heureFin || '',
         Lieu: record.lieu || '',
-        Resume_Intervention: record.resumeIntervention || '',
+        Resume_Intervention: record.resumeIntervention || record.resume || '',
         PAM: record.pam || '',
         Personnel: record.personnel || '',
         Armement: record.armement || '',
