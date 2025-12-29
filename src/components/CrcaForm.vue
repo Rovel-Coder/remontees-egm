@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  DsfrAlert,
   DsfrButton,
   DsfrCheckbox,
   DsfrInput,
@@ -32,7 +33,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: Partial<CrcaModel>]
-  'submit': [payload: { data: Partial<CrcaModel>, resetForm: () => void }]
+  'submit': [data: CrcaModel]
 }>()
 
 const model = ref<Partial<CrcaModel>>({
@@ -51,6 +52,11 @@ const model = ref<Partial<CrcaModel>>({
   ...props.modelValue,
 })
 
+const isSubmitting = ref(false)
+const submitMessage = ref('')
+const submitError = ref('')
+
+// Synchronisation avec props
 watch(() => props.modelValue, (newVal) => {
   model.value = { ...model.value, ...newVal }
 }, { deep: true })
@@ -59,6 +65,22 @@ watch(() => props.modelValue, (newVal) => {
 watch(model, (newVal) => {
   emit('update:modelValue', newVal)
 }, { deep: true })
+
+// Validation du formulaire
+const isValid = computed(() => {
+  const m = model.value
+  return (
+    m.secteur !== ''
+    && (m.indicatifs?.length ?? 0) > 0
+    && m.intervention !== ''
+    && m.natureIntervention?.trim() !== ''
+    && m.heureDebut?.trim() !== ''
+    && m.heureFin?.trim() !== ''
+    && m.lieu?.trim() !== ''
+    && m.pam !== ''
+    && m.resume?.trim() !== ''
+  )
+})
 
 function updateIndicatifs (value: string, checked: boolean) {
   const currentIndicatifs = model.value.indicatifs || []
@@ -134,35 +156,94 @@ const indicatifsB = computed(() => indicatifsPatrouille.filter(i => i.value.star
 const indicatifsC = computed(() => indicatifsPatrouille.filter(i => i.value.startsWith('C')))
 const indicatifsD = computed(() => indicatifsPatrouille.filter(i => i.value.startsWith('D')))
 
-// Fonction pour réinitialiser le formulaire
-function resetForm () {
-  model.value = {
-    secteur: '' as Secteur,
-    indicatifs: [],
-    intervention: '' as Intervention,
-    natureIntervention: '',
-    heureDebut: '',
-    heureFin: '',
-    lieu: '',
-    pam: '' as Pam,
-    personnel: '',
-    armement: '',
-    materiel: '',
-    resume: '',
-  }
-}
-
-function onSubmit (event: Event) {
+async function onSubmit (event: Event) {
   event.preventDefault()
-  emit('submit', { data: model.value, resetForm })
+
+  if (!isValid.value) {
+    submitError.value = 'Veuillez remplir tous les champs obligatoires'
+    return
+  }
+
+  isSubmitting.value = true
+  submitError.value = ''
+  submitMessage.value = ''
+
+  try {
+    // Préparer les données complètes
+    const crcaData: CrcaModel = {
+      secteur: model.value.secteur!,
+      indicatifs: model.value.indicatifs!,
+      intervention: model.value.intervention!,
+      natureIntervention: model.value.natureIntervention!,
+      heureDebut: model.value.heureDebut!,
+      heureFin: model.value.heureFin!,
+      lieu: model.value.lieu!,
+      pam: model.value.pam!,
+      personnel: model.value.personnel || '',
+      armement: model.value.armement || '',
+      materiel: model.value.materiel || '',
+      resume: model.value.resume!,
+    }
+
+    // Émettre les données complètes vers le parent
+    emit('submit', crcaData)
+
+    submitMessage.value = '✅ CRCA envoyé avec succès vers Grist !'
+
+    // Reset formulaire après 3 secondes
+    setTimeout(() => {
+      Object.assign(model.value, {
+        secteur: '' as Secteur,
+        indicatifs: [],
+        intervention: '' as Intervention,
+        natureIntervention: '',
+        heureDebut: '',
+        heureFin: '',
+        lieu: '',
+        pam: '' as Pam,
+        personnel: '',
+        armement: '',
+        materiel: '',
+        resume: '',
+      })
+    }, 3000)
+  }
+  catch (error) {
+    console.error('Erreur soumission CRCA:', error)
+    submitError.value = 'Erreur lors de l\'envoi vers Grist. Veuillez réessayer.'
+  }
+  finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 
 <template>
-  <form @submit="onSubmit">
-    <h2 class="fr-h3">
+  <form
+    class="fr-mb-5w"
+    @submit="onSubmit"
+  >
+    <h2 class="fr-h3 fr-mb-3w">
       Formulaire CRCA
     </h2>
+
+    <!-- Message de succès -->
+    <DsfrAlert
+      v-if="submitMessage"
+      title="Succès"
+      description="CRCA enregistré dans Grist"
+      type="success"
+      class="fr-mb-3w"
+    />
+
+    <!-- Message d'erreur -->
+    <DsfrAlert
+      v-if="submitError"
+      title="Erreur"
+      :description="submitError"
+      type="error"
+      class="fr-mb-3w"
+    />
 
     <DsfrRadioButtonSet
       v-model="model.secteur"
@@ -181,7 +262,7 @@ function onSubmit (event: Event) {
       v-if="model.secteur"
       class="fr-fieldset fr-mb-3w"
     >
-      <legend class="fr-fieldset__legend">
+      <legend class="fr-fieldset__legend fr-text--md">
         Indicatif de la Patrouille *
       </legend>
 
@@ -189,7 +270,7 @@ function onSubmit (event: Event) {
         v-if="model.secteur === 'ALPHA'"
         class="fr-col-12"
       >
-        <p class="fr-text--sm fr-mb-1v">
+        <p class="fr-text--sm fr-mb-1v fr-text--bold">
           Secteur ALPHA
         </p>
         <DsfrCheckbox
@@ -207,7 +288,7 @@ function onSubmit (event: Event) {
         v-if="model.secteur === 'BRAVO'"
         class="fr-col-12"
       >
-        <p class="fr-text--sm fr-mb-1v">
+        <p class="fr-text--sm fr-mb-1v fr-text--bold">
           Secteur BRAVO
         </p>
         <DsfrCheckbox
@@ -225,7 +306,7 @@ function onSubmit (event: Event) {
         v-if="model.secteur === 'CHARLIE'"
         class="fr-col-12"
       >
-        <p class="fr-text--sm fr-mb-1v">
+        <p class="fr-text--sm fr-mb-1v fr-text--bold">
           Secteur CHARLIE
         </p>
         <DsfrCheckbox
@@ -243,7 +324,7 @@ function onSubmit (event: Event) {
         v-if="model.secteur === 'DELTA'"
         class="fr-col-12"
       >
-        <p class="fr-text--sm fr-mb-1v">
+        <p class="fr-text--sm fr-mb-1v fr-text--bold">
           Secteur DELTA
         </p>
         <DsfrCheckbox
@@ -271,7 +352,7 @@ function onSubmit (event: Event) {
 
     <DsfrInput
       v-model="model.natureIntervention"
-      label="Nature Intervention *"
+      label="Nature de l'intervention *"
       label-visible
       required
       class="fr-mb-3w"
@@ -349,14 +430,19 @@ function onSubmit (event: Event) {
     <DsfrInput
       v-model="model.resume"
       type="textarea"
-      label="Résumé Intervention *"
+      label="Résumé de l'intervention *"
       label-visible
       required
       class="fr-mb-3w"
     />
 
-    <DsfrButton type="submit">
-      🚀 Envoyer automatiquement vers Grist CRCA
+    <DsfrButton
+      type="submit"
+      :loading="isSubmitting"
+      :disabled="!isValid || isSubmitting"
+      priority="primary"
+    >
+      🚀 {{ isSubmitting ? 'Envoi en cours...' : 'Envoyer vers Grist CRCA' }}
     </DsfrButton>
   </form>
 </template>

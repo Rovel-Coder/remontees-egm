@@ -11,9 +11,9 @@ const statusTitle = ref('')
 const crcaFormData = reactive<Partial<CrcaModel>>({})
 const crfmFormData = reactive<Partial<CrfmModel>>({})
 
-async function submitCrca ({ data, resetForm }: { data: Partial<CrcaModel>, resetForm: () => void }): Promise<void> {
+async function submitCrca (): Promise<void> {
   try {
-    if (!data.secteur || (data.indicatifs?.length || 0) === 0) {
+    if (!crcaFormData.secteur || (crcaFormData.indicatifs?.length || 0) === 0) {
       throw new Error('Secteur + 1 indicatif obligatoires')
     }
 
@@ -23,18 +23,18 @@ async function submitCrca ({ data, resetForm }: { data: Partial<CrcaModel>, rese
       body: JSON.stringify({
         table: 'CRCA',
         records: [{
-          secteur: data.secteur || '',
-          indicatifs: Array.isArray(data.indicatifs) ? data.indicatifs : [],
-          intervention: data.intervention || '',
-          natureIntervention: data.natureIntervention || '',
-          heureDebut: data.heureDebut || '',
-          heureFin: data.heureFin || '',
-          pam: data.pam || '',
-          lieu: data.lieu || '',
-          resume: data.resume || '',
-          personnel: data.personnel || '',
-          armement: data.armement || '',
-          materiel: data.materiel || ''
+          secteur: crcaFormData.secteur || '',
+          indicatifs: Array.isArray(crcaFormData.indicatifs) ? crcaFormData.indicatifs : [],
+          intervention: crcaFormData.intervention || '',
+          natureIntervention: crcaFormData.natureIntervention || '',
+          heureDebut: crcaFormData.heureDebut || '',
+          heureFin: crcaFormData.heureFin || '',
+          pam: crcaFormData.pam || '',
+          lieu: crcaFormData.lieu || '',
+          resume: crcaFormData.resume || '',
+          personnel: crcaFormData.personnel || '',
+          armement: crcaFormData.armement || '',
+          materiel: crcaFormData.materiel || ''
         }]
       })
     })
@@ -43,7 +43,7 @@ async function submitCrca ({ data, resetForm }: { data: Partial<CrcaModel>, rese
     if (response.ok && result.success) {
       statusTitle.value = result.message || '✅ CRCA envoyé !'
       statusMessage.value = `✅ CRCA → Grist numerique.gouv.fr`
-      resetForm() // ✅ VIDAGE AUTOMATIQUE
+      Object.assign(crcaFormData, {})
       return
     }
     throw new Error(result.error || 'Grist CRCA KO')
@@ -55,8 +55,8 @@ async function submitCrca ({ data, resetForm }: { data: Partial<CrcaModel>, rese
   }
 }
 
-async function submitCrfm ({ data, resetForm }: { data: Partial<CrfmModel>, resetForm: () => void }): Promise<void> {
-  console.warn('🔍 DEBUG CRFM - Données:', JSON.stringify(data, null, 2))
+async function submitCrfm (): Promise<void> {
+  console.warn('🔍 DEBUG CRFM - Données:', JSON.stringify(crfmFormData, null, 2))
 
   try {
     const response = await fetch('/api/grist.post', {
@@ -65,46 +65,46 @@ async function submitCrfm ({ data, resetForm }: { data: Partial<CrfmModel>, rese
       body: JSON.stringify({
         table: 'CRFM',
         records: [{
-          date: data.date || '',
-          secteur: data.secteur || '',
-          mission: data.mission || '',
-          horaire: data.horaire || '',
-          effectifs: data.effectifs || null,
-          vlEngages: data.vlEngages || null,
-          nbOad: data.nbOad || null,
-          controlesVl: data.controlesVl || null,
-          controlesPersonne: data.controlesPersonne || null,
-          nbInterCorgCic: data.nbInterCorgCic || null,
-          nbInterInitiative: data.nbInterInitiative || null,
-          rensFrm: data.rensFrm || null,
-          rensFrs: data.rensFrs || null,
-          stupCannabis: data.stupCannabis || null,
-          stupPlant: data.stupPlant || null,
-          stupAutres: data.stupAutres || '',
-          TA: data.infraTa || null,
-          Delits: data.infraDelits || null,
-          Interpellation_ZGN: data.interpZgn || null,
-          Interpellation_ZPN: data.interpZpn || null,
-          caillassageTouchant: data.caillassageTouchant || null,
-          caillassageNonTouchant: data.caillassageNonTouchant || null,
-          refusAvecInterp: data.refusAvecInterp || null,
-          refusSansInterp: data.refusSansInterp || null,
-          obstacle: data.obstacle || null,
-          feuHabitation: data.feuHabitation || null,
-          feuVoitures: data.feuVoitures || null,
-          feuAutres: data.feuAutres || null,
-          papafTouchant: data.papafTouchant || null,
-          papafNonTouchant: data.papafNonTouchant || null,
-          grenMp7: data.grenMp7 || null,
-          grenCm6: data.grenCm6 || null,
-          grenGenlDmp: data.grenGenlDmp || null,
-          grenGm2l: data.grenGm2l || null,
-          grenGl304: data.grenGl304 || null,
-          munLbd40: data.munLbd40 || null,
-          mun9mm: data.mun9mm || null,
-          mun556: data.mun556 || null,
-          mun762: data.mun762 || null,
-          commentairePam: data.commentairePam || ''
+          date: crfmFormData.date || '',
+          secteur: crfmFormData.secteur || '',
+          mission: crfmFormData.mission || '',
+          horaire: crfmFormData.horaire || '',
+          effectifs: crfmFormData.effectifs || null,
+          vlEngages: crfmFormData.vlEngages || null,
+          nbOad: crfmFormData.nbOad || null,
+          controlesVl: crfmFormData.controlesVl || null,
+          controlesPersonne: crfmFormData.controlesPersonne || null,
+          nbInterCorgCic: crfmFormData.nbInterCorgCic || null,
+          nbInterInitiative: crfmFormData.nbInterInitiative || null,
+          rensFrm: crfmFormData.rensFrm || null,
+          rensFrs: crfmFormData.rensFrs || null,
+          stupCannabis: crfmFormData.stupCannabis || null,
+          stupPlant: crfmFormData.stupPlant || null,
+          stupAutres: crfmFormData.stupAutres || '',
+          TA: crfmFormData.infraTa || null,
+          Delits: crfmFormData.infraDelits || null,
+          Interpellation_ZGN: crfmFormData.interpZgn || null,
+          Interpellation_ZPN: crfmFormData.interpZpn || null,
+          caillassageTouchant: crfmFormData.caillassageTouchant || null,
+          caillassageNonTouchant: crfmFormData.caillassageNonTouchant || null,
+          refusAvecInterp: crfmFormData.refusAvecInterp || null,
+          refusSansInterp: crfmFormData.refusSansInterp || null,
+          obstacle: crfmFormData.obstacle || null,
+          feuHabitation: crfmFormData.feuHabitation || null,
+          feuVoitures: crfmFormData.feuVoitures || null,
+          feuAutres: crfmFormData.feuAutres || null,
+          papafTouchant: crfmFormData.papafTouchant || null,
+          papafNonTouchant: crfmFormData.papafNonTouchant || null,
+          grenMp7: crfmFormData.grenMp7 || null,
+          grenCm6: crfmFormData.grenCm6 || null,
+          grenGenlDmp: crfmFormData.grenGenlDmp || null,
+          grenGm2l: crfmFormData.grenGm2l || null,
+          grenGl304: crfmFormData.grenGl304 || null,
+          munLbd40: crfmFormData.munLbd40 || null,
+          mun9mm: crfmFormData.mun9mm || null,
+          mun556: crfmFormData.mun556 || null,
+          mun762: crfmFormData.mun762 || null,
+          commentairePam: crfmFormData.commentairePam || ''
         }]
       })
     })
@@ -113,7 +113,7 @@ async function submitCrfm ({ data, resetForm }: { data: Partial<CrfmModel>, rese
     if (response.ok && result.success) {
       statusTitle.value = result.message || '✅ CRFM envoyé !'
       statusMessage.value = `✅ CRFM → Grist numerique.gouv.fr`
-      resetForm() // ✅ VIDAGE AUTOMATIQUE
+      Object.assign(crfmFormData, {})
       return
     }
     throw new Error(result.error || 'Grist CRFM KO')
@@ -158,7 +158,7 @@ function setActiveTab (tab: 'CRCA' | 'CRFM'): void {
       </div>
     </div>
 
-    <!-- ✅ BOUTONS DSFR UNIQUEMENT -->
+    <!-- Boutons DSFR -->
     <div class="fr-grid-row fr-grid-row--center fr-grid-row--gutters fr-mb-5w">
       <div class="fr-col-12 fr-col-md-6">
         <button
@@ -180,7 +180,7 @@ function setActiveTab (tab: 'CRCA' | 'CRFM'): void {
       </div>
     </div>
 
-    <!-- ✅ FORMULAIRES UNIQUEMENT APRÈS CLIC -->
+    <!-- Formulaire CRCA -->
     <div
       v-if="activeTab === 'CRCA'"
       class="fr-mb-5w"
@@ -196,6 +196,7 @@ function setActiveTab (tab: 'CRCA' | 'CRFM'): void {
       </div>
     </div>
 
+    <!-- Formulaire CRFM -->
     <div
       v-if="activeTab === 'CRFM'"
       class="fr-mb-5w"
