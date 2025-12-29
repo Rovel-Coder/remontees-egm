@@ -32,7 +32,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: Partial<CrcaModel>]
-  'submit': []
+  'submit': [payload: { data: Partial<CrcaModel>, resetForm: () => void }]
 }>()
 
 const model = ref<Partial<CrcaModel>>({
@@ -134,9 +134,27 @@ const indicatifsB = computed(() => indicatifsPatrouille.filter(i => i.value.star
 const indicatifsC = computed(() => indicatifsPatrouille.filter(i => i.value.startsWith('C')))
 const indicatifsD = computed(() => indicatifsPatrouille.filter(i => i.value.startsWith('D')))
 
+// Fonction pour réinitialiser le formulaire
+function resetForm () {
+  model.value = {
+    secteur: '' as Secteur,
+    indicatifs: [],
+    intervention: '' as Intervention,
+    natureIntervention: '',
+    heureDebut: '',
+    heureFin: '',
+    lieu: '',
+    pam: '' as Pam,
+    personnel: '',
+    armement: '',
+    materiel: '',
+    resume: '',
+  }
+}
+
 function onSubmit (event: Event) {
   event.preventDefault()
-  emit('submit')
+  emit('submit', { data: model.value, resetForm })
 }
 </script>
 
