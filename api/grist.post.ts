@@ -101,8 +101,9 @@ export default async function handler (req: any, res: any) {
     const gristData = { records: [{ fields: gristFields }] }
     console.warn('📤 Envoi GRIST:', tableName, gristFields)
 
+    // ✅ CORRECTION : URL API correcte pour Grist France
     const response = await fetch(
-      `${GRIST_SERVER}/o/api/docs/${GRIST_DOC_ID}/tables/${tableName}/records/`,
+      `${GRIST_SERVER}/${GRIST_DOC_ID}/${tableName}/records/`,
       {
         method: 'POST',
         headers: {
