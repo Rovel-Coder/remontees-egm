@@ -10,18 +10,11 @@ const props = defineProps<{
   modelValue: Partial<CrfmModel>
 }>()
 
-// ✅ Correction TypeScript : définir correctement les événements
 const emit = defineEmits<{
   'update:modelValue': [value: Partial<CrfmModel>]
-  'submitSuccess': [{ message: string, isError: boolean }] // ✅ TypeScript correct
+  'submit': [data: CrfmModel]
 }>()
 
-// Configuration Grist
-const GRIST_DOC_ID = '287D12LdHqN4hYBpsm52fo'
-const GRIST_API_KEY = import.meta.env.VITE_GRIST_API_KEY
-const GRIST_SERVER = 'https://grist.numerique.gouv.fr'
-
-// Types et interface (inchangés)
 type Horaire = '6-14' | '14-22' | '22-6' | ''
 type Secteur = 'ALPHA' | 'BRAVO' | 'CHARLIE' | 'DELTA' | ''
 type Mission =
@@ -75,7 +68,6 @@ interface CrfmModel {
   commentairePam: string
 }
 
-// État initial du formulaire
 const initialState: Partial<CrfmModel> = {
   date: '',
   horaire: '',
@@ -124,7 +116,6 @@ const model = reactive<Partial<CrfmModel>>({
   ...props.modelValue
 })
 
-// Synchronisation bidirectionnelle
 watch(() => props.modelValue, (newValue) => {
   Object.assign(model, newValue)
 }, { deep: true, immediate: true })
@@ -147,108 +138,80 @@ const requiredFields: (keyof CrfmModel)[] = [
   'commentairePam'
 ]
 
-// Fonction utilitaire pour les messages
-function showMessage (message: string, isError: boolean = false) {
-  if (isError) {
-    console.error(message)
-  }
-  emit('submitSuccess', { message, isError }) // ✅ TypeScript OK
-}
+// ✅ CORRECTION : Fonction nommée onSubmit (comme CrcaForm)
+async function onSubmit (event: Event) {
+  event.preventDefault()
 
-// Fonction pour envoyer vers Grist
-async function sendToGrist () {
   const missingFields = requiredFields.filter(field =>
-    !model[field] || model[field] === ''
+    model[field] === null || model[field] === undefined || model[field] === ''
   )
 
   if (missingFields.length > 0) {
-    showMessage(`Champs obligatoires manquants: ${missingFields.join(', ')}`, true)
-    return false
-  }
-
-  if (!GRIST_API_KEY) {
-    showMessage('Clé API Grist manquante. Configurez VITE_GRIST_API_KEY dans votre .env', true)
-    return false
+    console.warn('Champs obligatoires manquants:', missingFields)
+    return
   }
 
   try {
-    const gristData = [{
-      date: model.date,
-      horaire: model.horaire,
-      secteur: model.secteur,
-      mission: model.mission,
-      vl_engages: model.vlEngages,
-      effectifs: model.effectifs,
-      nb_oad: model.nbOad,
-      controles_vl: model.controlesVl,
-      controles_personne: model.controlesPersonne,
-      caillassage_touchant: model.caillassageTouchant,
-      caillassage_non_touchant: model.caillassageNonTouchant,
-      refus_avec_interp: model.refusAvecInterp,
-      refus_sans_interp: model.refusSansInterp,
-      obstacle: model.obstacle,
-      feu_habitation: model.feuHabitation,
-      feu_voitures: model.feuVoitures,
-      feu_autres: model.feuAutres,
-      papaf_touchant: model.papafTouchant,
-      papaf_non_touchant: model.papafNonTouchant,
-      gren_mp7: model.grenMp7,
-      gren_cm6: model.grenCm6,
-      gren_genl_dmp: model.grenGenlDmp,
-      gren_gm2l: model.grenGm2l,
-      gren_gl304: model.grenGl304,
-      mun_lbd40: model.munLbd40,
-      mun_9mm: model.mun9mm,
-      mun_556: model.mun556,
-      mun_762: model.mun762,
-      stup_cannabis: model.stupCannabis,
-      stup_plant: model.stupPlant,
-      stup_autres: model.stupAutres,
-      infra_ta: model.infraTa,
-      infra_delits: model.infraDelits,
-      interp_zgn: model.interpZgn,
-      interp_zpn: model.interpZpn,
-      nb_inter_corg_cic: model.nbInterCorgCic,
-      nb_inter_initiative: model.nbInterInitiative,
-      rens_frm: model.rensFrm,
-      rens_frs: model.rensFrs,
-      commentaire_pam: model.commentairePam
-    }]
-
-    const response = await fetch(
-      `${GRIST_SERVER}/o/api/docs/${GRIST_DOC_ID}/tables/CRFM/records/`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${GRIST_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(gristData)
-      }
-    )
-
-    if (!response.ok) {
-      throw new Error(`Erreur API Grist: ${response.status} ${response.statusText}`)
+    // Préparer les données complètes pour le parent
+    const crfmData: CrfmModel = {
+      date: model.date!,
+      horaire: model.horaire!,
+      secteur: model.secteur!,
+      mission: model.mission!,
+      vlEngages: model.vlEngages!,
+      effectifs: model.effectifs!,
+      nbOad: model.nbOad ?? null,
+      controlesVl: model.controlesVl ?? null,
+      controlesPersonne: model.controlesPersonne ?? null,
+      caillassageTouchant: model.caillassageTouchant ?? null,
+      caillassageNonTouchant: model.caillassageNonTouchant ?? null,
+      refusAvecInterp: model.refusAvecInterp ?? null,
+      refusSansInterp: model.refusSansInterp ?? null,
+      obstacle: model.obstacle ?? null,
+      feuHabitation: model.feuHabitation ?? null,
+      feuVoitures: model.feuVoitures ?? null,
+      feuAutres: model.feuAutres ?? null,
+      papafTouchant: model.papafTouchant ?? null,
+      papafNonTouchant: model.papafNonTouchant ?? null,
+      grenMp7: model.grenMp7 ?? null,
+      grenCm6: model.grenCm6 ?? null,
+      grenGenlDmp: model.grenGenlDmp ?? null,
+      grenGm2l: model.grenGm2l ?? null,
+      grenGl304: model.grenGl304 ?? null,
+      munLbd40: model.munLbd40 ?? null,
+      mun9mm: model.mun9mm ?? null,
+      mun556: model.mun556 ?? null,
+      mun762: model.mun762 ?? null,
+      stupCannabis: model.stupCannabis ?? null,
+      stupPlant: model.stupPlant ?? null,
+      stupAutres: model.stupAutres ?? '',
+      infraTa: model.infraTa ?? null,
+      infraDelits: model.infraDelits ?? null,
+      interpZgn: model.interpZgn ?? null,
+      interpZpn: model.interpZpn ?? null,
+      nbInterCorgCic: model.nbInterCorgCic ?? null,
+      nbInterInitiative: model.nbInterInitiative ?? null,
+      rensFrm: model.rensFrm ?? null,
+      rensFrs: model.rensFrs ?? null,
+      commentairePam: model.commentairePam!
     }
 
-    const result = await response.json()
-    console.warn('Données envoyées à Grist:', result)
+    // ✅ Émettre vers le parent (comme CrcaForm)
+    emit('submit', crfmData)
 
-    resetForm()
-    emit('submitSuccess', { message: 'Données envoyées avec succès vers Grist !', isError: false }) // ✅ TypeScript OK
-    return true
+    // ✅ Reset automatique après 3 secondes (comme CrcaForm)
+    setTimeout(() => {
+      resetForm()
+    }, 3000)
   }
   catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
-    console.error('Erreur envoi Grist:', error)
-    showMessage(`Erreur lors de l'envoi: ${errorMessage}`, true)
-    return false
+    console.error('Erreur préparation CRFM:', error)
   }
 }
 </script>
 
 <template>
-  <form @submit.prevent="sendToGrist">
+  <form @submit="onSubmit">
     <h2 class="fr-h3">
       CR FIN DE MISSION
     </h2>
@@ -749,7 +712,6 @@ async function sendToGrist () {
         <DsfrButton
           type="submit"
           priority="primary"
-          class="fr-mb-4w"
         >
           Envoyer la remontée CRFM vers Grist
         </DsfrButton>
