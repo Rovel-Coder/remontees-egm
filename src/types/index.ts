@@ -5,7 +5,7 @@ export type Secteur = '' | 'ALPHA' | 'BRAVO' | 'CHARLIE' | 'DELTA'
 export type Horaire = '' | '6h - 14h' | '14h - 22h' | '22h - 6h'
 export type Mission = '' | 'CTRZ' | 'OAD' | 'MO/RO' | 'SECURISATION' | 'RI'
 export type Intervention = '' | 'INITIATIVE' | 'CIC'
-export type Pam = '' | 'PAM_RAS' | 'PAM_NON_RAS'
+export type Pam = '' | 'PAM RAS' | 'PAM NON RAS'
 
 // Modèles complets
 export interface CrcaModel {
@@ -44,8 +44,8 @@ export interface CrfmModel {
   rensFrs: number | null
   stupCannabis: number | null
   stupPlant: number | null
-  diversQuantite: number | null // Quantité autres catégories
-  diversPrecision: string // Description autres catégories
+  stupAutres: number | null // ← Changé de diversQuantite à stupAutres
+  stupAutresPrecision: string // ← Changé de diversPrecision à stupAutresPrecision
   infraTa: number | null // Correspond à TA dans Grist
   infraDelits: number | null // Correspond à Delits dans Grist
   interpZgn: number | null // Correspond à Interpellation_ZGN
