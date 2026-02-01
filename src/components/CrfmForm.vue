@@ -1,5 +1,3 @@
-<!-- src/components/CrfmForm.vue -->
-
 <script setup lang="ts">
 import {
   DsfrButton,
@@ -8,80 +6,17 @@ import {
   DsfrSelect
 } from '@gouvminint/vue-dsfr'
 import { reactive, watch, onMounted, ref } from 'vue'
+import type { CrfmModel } from '@/types'
 
-
-// Props/Emits
 const props = defineProps<{
   modelValue: Partial<CrfmModel>
 }>()
-
 
 const emit = defineEmits<{
   'update:modelValue': [value: Partial<CrfmModel>]
   'submit': [data: CrfmModel]
 }>()
 
-
-// Types
-type Horaire = '6h - 14h' | '14h - 22h' | '22h - 6h' | ''
-type Secteur = 'ALPHA' | 'BRAVO' | 'CHARLIE' | 'DELTA' | ''
-type Mission =
-  | 'CTRZ'
-  | 'OAD'
-  | 'MO/RO'
-  | 'SECURISATION'
-  | 'RI'
-  | ''
-type Escadron = string  // ID Grist de la table référencée
-
-
-interface CrfmModel {
-  date: string
-  horaire: Horaire
-  secteur: Secteur
-  mission: Mission
-  escadron: Escadron
-  vlEngages: number | null
-  effectifs: number | null
-  nbOad: number | null
-  controlesVl: number | null
-  controlesPersonne: number | null
-  caillassageTouchant: number | null
-  caillassageNonTouchant: number | null
-  refusAvecInterp: number | null
-  refusSansInterp: number | null
-  obstacle: number | null
-  feuHabitation: number | null
-  feuVoitures: number | null
-  feuAutres: number | null
-  papafTouchant: number | null
-  papafNonTouchant: number | null
-  grenMp7: number | null
-  grenCm6: number | null
-  grenGenlDmp: number | null
-  grenGm2l: number | null
-  grenGl304: number | null
-  munLbd40: number | null
-  mun9mm: number | null
-  mun556: number | null
-  mun762: number | null
-  stupCannabis: number | null
-  stupPlant: number | null
-  stupAutres: number | null
-  stupAutresPrecision: string
-  infraTa: number | null
-  infraDelits: number | null
-  interpZgn: number | null
-  interpZpn: number | null
-  nbInterCorgCic: number | null
-  nbInterInitiative: number | null
-  rensFrm: number | null
-  rensFrs: number | null
-  commentairePam: string
-}
-
-
-// État initial
 const initialState: Partial<CrfmModel> = {
   date: '',
   horaire: '',
@@ -127,32 +62,23 @@ const initialState: Partial<CrfmModel> = {
   commentairePam: ''
 }
 
-
-// Modèle réactif
 const model = reactive<Partial<CrfmModel>>({
   ...initialState,
   ...props.modelValue
 })
 
-
-// Watchers
 watch(() => props.modelValue, (newValue) => {
   Object.assign(model, newValue)
 }, { deep: true, immediate: true })
-
 
 watch(model, (newValue) => {
   emit('update:modelValue', newValue)
 }, { deep: true })
 
-
-// Reset
 function resetForm () {
   Object.assign(model, initialState)
 }
 
-
-// Champs obligatoires
 const requiredFields: (keyof CrfmModel)[] = [
   'date',
   'horaire',
@@ -164,13 +90,10 @@ const requiredFields: (keyof CrfmModel)[] = [
   'commentairePam'
 ]
 
-
 // OPTIONS ESCADRON DYNAMIQUES GRIST
 const escadronOptions = ref<{value: string, text: string}[]>([])
 const loadingEscadrons = ref(false)
 
-
-// Dans CrfmForm.vue et CrcaForm.vue (section onMounted)
 onMounted(async () => {
   loadingEscadrons.value = true
   try {
@@ -197,11 +120,6 @@ onMounted(async () => {
   }
 })
 
-
-
-
-
-// Submit
 async function onSubmit (event: Event) {
   event.preventDefault()
 
@@ -211,6 +129,7 @@ async function onSubmit (event: Event) {
 
   if (missingFields.length > 0) {
     console.warn('Champs obligatoires manquants:', missingFields)
+    alert(`Champs manquants : ${missingFields.join(', ')}`)
     return
   }
 
@@ -260,6 +179,25 @@ async function onSubmit (event: Event) {
       commentairePam: model.commentairePam!
     }
 
+    // Envoyer vers l'API serverless
+    const response = await fetch('/api/grist.post', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        table: 'CRFM',
+        records: [crfmData]
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`Erreur ${response.status}`)
+    }
+
+    const result = await response.json()
+    console.log('✅ CRFM envoyé avec succès:', result)
+
     emit('submit', crfmData)
 
     setTimeout(() => {
@@ -267,12 +205,11 @@ async function onSubmit (event: Event) {
     }, 3000)
   }
   catch (error) {
-    console.error('Erreur préparation CRFM:', error)
+    console.error('❌ Erreur envoi CRFM:', error)
+    alert('Erreur lors de l\'envoi du formulaire')
   }
 }
 </script>
-
-
 
 <template>
   <form @submit="onSubmit">
@@ -285,7 +222,7 @@ async function onSubmit (event: Event) {
       <div class="fr-col-12 fr-col-md-6">
         <DsfrSelect
           v-model="model.escadron"
-          label="Escadron"
+          label="Escadron *"
           required
           :options="escadronOptions"
           :disabled="loadingEscadrons"
@@ -299,7 +236,7 @@ async function onSubmit (event: Event) {
         <DsfrInput
           v-model="model.date"
           type="date"
-          label="Date"
+          label="Date *"
           label-visible
           required
         />
@@ -307,7 +244,7 @@ async function onSubmit (event: Event) {
       <div class="fr-col-12 fr-col-md-3">
         <DsfrRadioButtonSet
           v-model="model.horaire"
-          legend="Horaires"
+          legend="Horaires *"
           :options="[
             { label: '6h - 14h', value: '6h - 14h' },
             { label: '14h - 22h', value: '14h - 22h' },
@@ -319,7 +256,7 @@ async function onSubmit (event: Event) {
       <div class="fr-col-12 fr-col-md-3">
         <DsfrRadioButtonSet
           v-model="model.secteur"
-          legend="Secteur"
+          legend="Secteur *"
           :options="[
             { label: 'ALPHA', value: 'ALPHA' },
             { label: 'BRAVO', value: 'BRAVO' },
@@ -332,7 +269,7 @@ async function onSubmit (event: Event) {
       <div class="fr-col-12 fr-col-md-3">
         <DsfrRadioButtonSet
           v-model="model.mission"
-          legend="Mission"
+          legend="Mission *"
           :options="[
             { label: 'CTRZ', value: 'CTRZ' },
             { label: 'OAD', value: 'OAD' },
@@ -352,7 +289,7 @@ async function onSubmit (event: Event) {
           v-model="model.vlEngages"
           type="number"
           min="0"
-          label="VL engagés"
+          label="VL engagés *"
           label-visible
           required
         />
@@ -362,7 +299,7 @@ async function onSubmit (event: Event) {
           v-model="model.effectifs"
           type="number"
           min="0"
-          label="Effectifs"
+          label="Effectifs *"
           label-visible
           required
         />
@@ -786,7 +723,7 @@ async function onSubmit (event: Event) {
       <DsfrInput
         v-model="model.commentairePam"
         type="textarea"
-        label="Commentaire (PAM obligatoire)"
+        label="Commentaire (PAM obligatoire) *"
         label-visible
         required
       />
