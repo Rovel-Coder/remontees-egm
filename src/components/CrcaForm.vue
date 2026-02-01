@@ -72,12 +72,11 @@ const escadronOptions = ref<{value: string, text: string}[]>([])
 const loadingEscadrons = ref(false)
 
 
-// Dans CrfmForm.vue (section onMounted)
+// Dans CrfmForm.vue et CrcaForm.vue
 onMounted(async () => {
   loadingEscadrons.value = true
   try {
-    // Appel à votre API Vercel au lieu de Grist directement
-    const response = await fetch('/api/grist?table=Escadron')
+    const response = await fetch('/api/escadrons?table=Escadron')
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`)
@@ -99,6 +98,7 @@ onMounted(async () => {
     loadingEscadrons.value = false
   }
 })
+
 
 
 
