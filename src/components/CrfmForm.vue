@@ -170,31 +170,26 @@ const escadronOptions = ref<{value: string, text: string}[]>([])
 const loadingEscadrons = ref(false)
 
 
+// Dans CrfmForm.vue (section onMounted)
 onMounted(async () => {
   loadingEscadrons.value = true
   try {
-    const GRIST_DOC_ID = '287D12LdHqN4hYBpsm52fo'
-    const GRIST_API_KEY = import.meta.env.VITE_GRIST_API_KEY
-    const ESCADRON_TABLE_ID = 5
+    // Appel à votre API Vercel au lieu de Grist directement
+    const response = await fetch('/api/grist?table=Escadron')
     
-    const response = await fetch(
-      `https://grist.numerique.gouv.fr/api/docs/${GRIST_DOC_ID}/tables/${ESCADRON_TABLE_ID}/records`,
-      {
-        headers: {
-          'Authorization': `Bearer ${GRIST_API_KEY}`
-        }
-      }
-    )
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
     
     const data = await response.json()
     
     escadronOptions.value = data.records.map((record: any) => ({
       value: String(record.id),
-      text: record.fields.Nom_Escadron || record.fields.Nom || record.fields.Code || `Escadron ${record.id}`
+      text: record.fields.Nom || record.fields.Code || `Escadron ${record.id}`
     }))
     
   } catch (error) {
-    console.error('❌ Erreur chargement escadrons Grist:', error)
+    console.error('❌ Erreur chargement escadrons:', error)
     escadronOptions.value = [
       { value: '', text: 'Erreur de chargement' }
     ]
@@ -202,6 +197,7 @@ onMounted(async () => {
     loadingEscadrons.value = false
   }
 })
+
 
 
 // Submit
