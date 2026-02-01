@@ -5,13 +5,23 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 const CONFIG = {
     GRIST_SERVER: process.env.GRIST_SERVER || 'https://grist.numerique.gouv.fr',
     GRIST_DOC_ID: process.env.GRIST_DOC_ID || '287D12LdHqN4hYBpsm52fo',
-    GRIST_API_KEY: process.env.GRIST_API_KEY
+    GRIST_API_KEY: process.env.GRIST_API_KEY,
+    ALLOWED_ORIGINS: [
+        'https://remontees-egm.vercel.app',
+        'http://localhost:4000',
+        'http://localhost:5173'
+    ]
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // Support CORS
-    res.setHeader('Access-Control-Allow-Credentials', 'true')
-    res.setHeader('Access-Control-Allow-Origin', '*')
+    const origin = req.headers.origin || ''
+    const isAllowedOrigin = CONFIG.ALLOWED_ORIGINS.includes(origin)
+
+    if (isAllowedOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', origin)
+        res.setHeader('Access-Control-Allow-Credentials', 'true')
+    }
+
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS')
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
@@ -25,14 +35,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return
     }
 
-    const { table = 'Escadron' } = req.query
-
     if (!CONFIG.GRIST_API_KEY) {
         res.status(500).json({ error: 'GRIST_API_KEY manquante' })
         return
     }
 
-    const gristUrl = `${CONFIG.GRIST_SERVER}/api/docs/${CONFIG.GRIST_DOC_ID}/tables/${table}/records`
+    const gristUrl = `${CONFIG.GRIST_SERVER}/api/docs/${CONFIG.GRIST_DOC_ID}/tables/Escadron/records`
 
     try {
         const response = await fetch(gristUrl, {

@@ -10,22 +10,21 @@ const CONFIG = {
   GRIST_DOC_ID: process.env.GRIST_DOC_ID || '287D12LdHqN4hYBpsm52fo',
   GRIST_API_KEY: process.env.GRIST_API_KEY,
   CRFM_TABLE: process.env.GRIST_TABLE_CRFM || 'CRFM',
-  CRCA_TABLE: process.env.GRIST_TABLE_CRCA || 'CRCA'
+  CRCA_TABLE: process.env.GRIST_TABLE_CRCA || 'CRCA',
+  ALLOWED_ORIGINS: [
+    'https://remontees-egm.vercel.app',
+    'http://localhost:4000',
+    'http://localhost:5173'
+  ]
 }
 
 function mapCrfmToGrist(record: RecordData): GristFields {
-  const date = record.date ? String(record.date) : ''
-  const secteur = record.secteur ? String(record.secteur) : ''
-  const horaire = record.horaire ? String(record.horaire) : ''
-  const mission = record.mission ? String(record.mission) : ''
-  const escadron = record.escadron ? Number(record.escadron) : null
-
   return {
-    Date: date,
-    Secteur: secteur,
-    Horaires: horaire,
-    Mission: mission,
-    EGM: escadron,
+    Date: record.date ? String(record.date) : '',
+    Secteur: record.secteur ? String(record.secteur) : '',
+    Horaires: record.horaire ? String(record.horaire) : '',
+    Mission: record.mission ? String(record.mission) : '',
+    EGM: record.escadron ? Number(record.escadron) : null,
     VL_Engages: record.vlEngages ? Number(record.vlEngages) : null,
     Effectifs: record.effectifs ? Number(record.effectifs) : null,
     Nbr_OAD: record.nbOad ? Number(record.nbOad) : null,
@@ -98,8 +97,14 @@ function mapCrcaToGrist(record: RecordData): GristFields {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Credentials', 'true')
-  res.setHeader('Access-Control-Allow-Origin', '*')
+  const origin = req.headers.origin || ''
+  const isAllowedOrigin = CONFIG.ALLOWED_ORIGINS.includes(origin)
+
+  if (isAllowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
+  }
+
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
@@ -113,30 +118,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
+  // Le body est directement accessible via req.body avec Vercel
   const record: RecordData = req.body
 
+  console.log('📥 Body reçu:', JSON.stringify(record, null, 2))
+
   if (!CONFIG.GRIST_API_KEY) {
+    console.error('❌ GRIST_API_KEY manquante')
     res.status(500).json({ error: 'GRIST_API_KEY manquante' })
     return
   }
 
-  const tableName = record.table || CONFIG.CRFM_TABLE
-  console.log('Table cible:', tableName, 'Record:', record)
+  // Extraire le nom de la table du body
+  const tableName = (record.table as string) || CONFIG.CRFM_TABLE
+  console.log('📊 Table cible:', tableName)
 
   let gristFields: GristFields
-  if (tableName === CONFIG.CRFM_TABLE) {
+  if (tableName === CONFIG.CRFM_TABLE || tableName === 'CRFM') {
     gristFields = mapCrfmToGrist(record)
-  } else if (tableName === CONFIG.CRCA_TABLE) {
+  } else if (tableName === CONFIG.CRCA_TABLE || tableName === 'CRCA') {
     gristFields = mapCrcaToGrist(record)
   } else {
+    console.error('❌ Table non supportée:', tableName)
     res.status(400).json({ error: `Table ${tableName} non supportée` })
     return
   }
 
+  console.log('📤 Champs Grist mappés:', JSON.stringify(gristFields, null, 2))
+
   const gristData = { records: [{ fields: gristFields }] }
-  console.log('Envoi vers Grist:', gristFields)
 
   const url = `${CONFIG.GRIST_SERVER}/api/docs/${CONFIG.GRIST_DOC_ID}/tables/${tableName}/records`
+  console.log('🌐 URL Grist:', url)
 
   try {
     const response = await fetch(url, {
@@ -148,17 +161,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify(gristData)
     })
 
+    const responseText = await response.text()
+    console.log('📨 Réponse Grist (status ' + response.status + '):', responseText)
+
     if (!response.ok) {
-      const text = await response.text()
-      console.error('GRIST ERROR', response.status, text)
-      res.status(response.status).json({ error: `Grist ${response.status}` })
+      console.error('❌ GRIST ERROR', response.status, responseText.slice(0, 300))
+      res.status(response.status).json({ error: `Grist ${response.status}: ${responseText}` })
       return
     }
 
-    const result = await response.json()
+    const result = JSON.parse(responseText)
+    console.log('✅ Succès! IDs insérés:', result.records)
     res.status(200).json({ success: true, inserted: result.records })
   } catch (error: unknown) {
-    console.error('FETCH ERROR', error)
+    console.error('❌ FETCH ERROR', error)
     res.status(500).json({
       error: (error as Error).message || 'Erreur réseau',
       timestamp: new Date().toISOString()
