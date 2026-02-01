@@ -118,10 +118,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  // Le body est directement accessible via req.body avec Vercel
-  const record: RecordData = req.body
-
-  console.log('📥 Body reçu:', JSON.stringify(record, null, 2))
+  const body = req.body
+  console.log('📥 Body complet reçu:', JSON.stringify(body, null, 2))
 
   if (!CONFIG.GRIST_API_KEY) {
     console.error('❌ GRIST_API_KEY manquante')
@@ -129,9 +127,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  // Extraire le nom de la table du body
-  const tableName = (record.table as string) || CONFIG.CRFM_TABLE
+  // Extraire les données selon le format reçu
+  let record: RecordData
+  let tableName: string
+
+  if (body.records && Array.isArray(body.records) && body.records.length > 0) {
+    // Format: { table: 'CRCA', records: [{ ... }] }
+    record = body.records[0] as RecordData
+    tableName = (body.table as string) || CONFIG.CRFM_TABLE
+  } else if (body.table) {
+    // Format: { table: 'CRFM', field1: ..., field2: ... }
+    const { table, ...rest } = body
+    record = rest as RecordData
+    tableName = table as string
+  } else {
+    // Format direct: { field1: ..., field2: ... }
+    record = body as RecordData
+    tableName = CONFIG.CRFM_TABLE
+  }
+
   console.log('📊 Table cible:', tableName)
+  console.log('📋 Record extrait:', JSON.stringify(record, null, 2))
 
   let gristFields: GristFields
   if (tableName === CONFIG.CRFM_TABLE || tableName === 'CRFM') {
