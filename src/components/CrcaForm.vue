@@ -72,11 +72,11 @@ const escadronOptions = ref<{value: string, text: string}[]>([])
 const loadingEscadrons = ref(false)
 
 
-// Dans CrfmForm.vue et CrcaForm.vue
+// Dans CrfmForm.vue et CrcaForm.vue (section onMounted)
 onMounted(async () => {
   loadingEscadrons.value = true
   try {
-    const response = await fetch('/api/escadrons?table=Escadron')
+    const response = await fetch('/api/escadrons')
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`)
@@ -86,7 +86,7 @@ onMounted(async () => {
     
     escadronOptions.value = data.records.map((record: any) => ({
       value: String(record.id),
-      text: record.fields.Nom || record.fields.Code || `Escadron ${record.id}`
+      text: record.fields.Nom_Escadron || `Escadron ${record.id}`
     }))
     
   } catch (error) {
@@ -98,7 +98,6 @@ onMounted(async () => {
     loadingEscadrons.value = false
   }
 })
-
 
 
 
