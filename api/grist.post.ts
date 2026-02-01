@@ -1,152 +1,148 @@
-// api/grist.post.ts - Configuration via variables d'environnement + FIX indicatifs
+// api/grist.post.ts
+
+
 import process from 'node:process'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 
-export default async function handler (req: any, res: any) {
+type RecordData = Record<string, unknown>
+type GristFields = Record<string, string | number | null>
+
+const HTTP_METHOD_NOT_ALLOWED = 405
+const HTTP_BAD_REQUEST = 400
+const HTTP_INTERNAL_SERVER_ERROR = 500
+const HTTP_OK = 200
+
+export const HTTP_STATUS = {
+  METHOD_NOT_ALLOWED: HTTP_METHOD_NOT_ALLOWED,
+  BAD_REQUEST: HTTP_BAD_REQUEST,
+  INTERNAL_SERVER_ERROR: HTTP_INTERNAL_SERVER_ERROR,
+  OK: HTTP_OK
+} as const
+
+const MAX_ERROR_DETAILS_LENGTH = 300
+const MAX_LOG_LENGTH = 500
+
+const CONFIG = {
+  GRIST_SERVER: process.env.GRIST_SERVER || 'https://grist.numerique.gouv.fr',
+  GRIST_DOC_ID: process.env.GRIST_DOC_ID || '287D12LdHqN4hYBpsm52fo',
+  GRIST_API_KEY: process.env.GRIST_API_KEY,
+  CRFM_TABLE: process.env.GRIST_TABLE_CRFM || 'CRFM',
+  CRCA_TABLE: process.env.GRIST_TABLE_CRCA || 'CRCA'
+}
+
+const isDev = process.env.NODE_ENV === 'development'
+
+const logWarn = (...args: unknown[]) => {
+  if (isDev) process.stdout.write(`[GRIST] ${JSON.stringify(args).slice(0, MAX_LOG_LENGTH)}\n`)
+}
+const logError = (...args: unknown[]) => {
+  if (isDev) process.stderr.write(`[GRIST ERROR] ${JSON.stringify(args).slice(0, MAX_LOG_LENGTH)}\n`)
+}
+
+function mapCrfmToGrist(record: RecordData): GristFields {
+  const date = record.date ? String(record.date) : ''
+  const secteur = record.secteur ? String(record.secteur) : ''
+  return { Date: date, Secteur: secteur }
+}
+
+function mapCrcaToGrist(record: RecordData): GristFields {
+  if (Array.isArray(record.indicatifs)) {
+    return { Indic_Patrouille: (record.indicatifs as string[]).join(', ') }
+  }
+
+  if (record.indicPatrouille) {
+    return { Indic_Patrouille: String(record.indicPatrouille) }
+  }
+
+  const indicatifs = record.indicatifs ? String(record.indicatifs) : ''
+  return { Indic_Patrouille: indicatifs }
+}
+
+export default async function handler(
+  req: IncomingMessage & { body?: unknown },
+  res: ServerResponse
+) {
+  logWarn('START')
+
+  if (req.method !== 'POST') {
+    res.writeHead(HTTP_STATUS.METHOD_NOT_ALLOWED, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ error: 'Méthode POST requise' }))
+    return
+  }
+
+  let parsedBody: any
+  if (typeof req.body === 'string') {
+    parsedBody = JSON.parse(req.body)
+  } else {
+    parsedBody = req.body
+  }
+
+  let record: RecordData
+  if (parsedBody && parsedBody.records && parsedBody.records[0] && parsedBody.records[0].fields) {
+    record = parsedBody.records[0].fields
+  } else if (parsedBody) {
+    record = parsedBody
+  } else {
+    res.writeHead(HTTP_STATUS.BAD_REQUEST, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ error: 'Aucun record trouvé' }))
+    return
+  }
+
+  logWarn('Record extrait', record)
+
+  if (!CONFIG.GRIST_API_KEY) {
+    res.writeHead(HTTP_STATUS.INTERNAL_SERVER_ERROR, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ error: 'GRIST_API_KEY manquante' }))
+    return
+  }
+
+  const tableName = parsedBody.table || CONFIG.CRFM_TABLE
+  logWarn('Table cible', tableName)
+
+  let gristFields: GristFields
+  if (tableName === CONFIG.CRFM_TABLE) {
+    gristFields = mapCrfmToGrist(record)
+  } else if (tableName === CONFIG.CRCA_TABLE) {
+    gristFields = mapCrcaToGrist(record)
+  } else {
+    res.writeHead(HTTP_STATUS.BAD_REQUEST, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ error: `Table ${tableName} non supportée` }))
+    return
+  }
+
+  const gristData = { records: [{ fields: gristFields }] }
+  logWarn('Envoi GRIST', tableName, gristFields)
+
+  const url = `${CONFIG.GRIST_SERVER}/api/docs/${CONFIG.GRIST_DOC_ID}/tables/${tableName}/records`
+  logWarn('URL', url)
+
   try {
-    console.warn('🔍 API GRIST - START')
-
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Méthode POST requise' })
-    }
-
-    const parsedBody = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
-    const record = parsedBody.records?.[0] || parsedBody
-    if (!record) {
-      return res.status(400).json({ error: 'Aucun record trouvé' })
-    }
-
-    console.warn('✅ Record extrait:', record)
-
-    // 📋 CONFIGURATION VIA VARIABLES D'ENVIRONNEMENT
-    const GRIST_SERVER = process.env.GRIST_SERVER || 'https://grist.numerique.gouv.fr'
-    const GRIST_DOC_ID = process.env.GRIST_DOC_ID || '287D12LdHqN4hYBpsm52fo'
-    const GRIST_API_KEY = process.env.GRIST_API_KEY
-    const CRFM_TABLE = process.env.GRIST_TABLE_CRFM || 'CRFM'
-    const CRCA_TABLE = process.env.GRIST_TABLE_CRCA || 'CRCA'
-
-    if (!GRIST_API_KEY) {
-      return res.status(500).json({ error: 'GRIST_API_KEY manquante' })
-    }
-
-    const tableName = parsedBody.table || CRFM_TABLE
-    console.warn('📊 Table cible:', tableName)
-
-    let gristFields
-
-    // 🎯 CRFM - NOMS EXACTS GRIST
-    if (tableName === CRFM_TABLE) {
-      gristFields = {
-        Date: record.date || '',
-        Secteur: record.secteur || '',
-        Mission: record.mission || '',
-        Horaires: record.horaire || '',
-        VL_Engages: Number(record.vlEngages) || 0,
-        Effectifs: Number(record.effectifs) || 0,
-        Nbr_OAD: Number(record.nbOad) || 0,
-        Nbr_CTRL_VL: Number(record.controlesVl) || 0,
-        Nbr_CTRL_Personne: Number(record.controlesPersonne) || 0,
-        Nbr_Intervention_CORG_CIC: Number(record.nbInterCorgCic) || 0,
-        Nbr_Intervention_Initiative: Number(record.nbInterInitiative) || 0,
-        FRM: Number(record.rensFrm) || 0,
-        FRS: Number(record.rensFrs) || 0,
-        Cannabis: Number(record.stupCannabis) || 0,
-        Plant_Cannabis: Number(record.stupPlant) || 0,
-        Autres: Number(record.stupAutres) || 0,
-        Precision_STUP: record.stupAutres || '',
-        TA: Number(record.TA || record.infraTa) || 0,
-        Delits: Number(record.Delits || record.infraDelits) || 0,
-        Interpellation_ZGN: Number(record.Interpellation_ZGN || record.interpZgn) || 0,
-        Interpellation_ZPN: Number(record.Interpellation_ZPN || record.interpZpn) || 0,
-        Caillassage_Touchant: Number(record.caillassageTouchant) || 0,
-        Caillassage_Non_Touchant: Number(record.caillassageNonTouchant) || 0,
-        Refus_Obtemperer_Avec_Interpellation: Number(record.refusAvecInterp) || 0,
-        Refus_Obtemperer_Sans_Interpellation: Number(record.refusSansInterp) || 0,
-        Obstacle_Entrave_a_la_circulation_: Number(record.obstacle) || 0,
-        Feu_Habitation_Commerce: Number(record.feuHabitation) || 0,
-        Feu_Voitures: Number(record.feuVoitures) || 0,
-        Feu_Autres: Number(record.feuAutres) || 0,
-        PAPAAF_Touchants: Number(record.papafTouchant) || 0,
-        PAPAAF_Non_Touchants: Number(record.papafNonTouchant) || 0,
-        MP7: Number(record.grenMp7) || 0,
-        CM6: Number(record.grenCm6) || 0,
-        GENL_DMP: Number(record.grenGenlDmp) || 0,
-        GM2L: Number(record.grenGm2l) || 0,
-        GL304: Number(record.grenGl304) || 0,
-        LBD_40: Number(record.munLbd40) || 0,
-        c9_mm: Number(record.mun9mm) || 0,
-        c5_56_mm: Number(record.mun556) || 0,
-        c7_62_mm: Number(record.mun762) || 0,
-        Commentaire: record.commentairePam || ''
-      }
-    }
-    // 🎯 CRCA - NOMS EXACTS GRIST + ✅ FIX INDICATIFS
-    else if (tableName === CRCA_TABLE) {
-      gristFields = {
-        // ✅ FIX : Tableau indicatifs → string comma-separated
-        Indic_Patrouille: Array.isArray(record.indicatifs)
-          ? record.indicatifs.join(', ')
-          : record.indicPatrouille || record.indicatifs || '',
-        Intervention: record.intervention || '',
-        Secteur: record.secteur || '',
-        Nature_Intervention: record.natureIntervention || '',
-        Heure_debut_Intervention: record.heureDebut || '',
-        Heure_Fin_Intervention: record.heureFin || '',
-        Lieu: record.lieu || '',
-        Resume_Intervention: record.resumeIntervention || record.resume || '',
-        PAM: record.pam || '',
-        Personnel: record.personnel || '',
-        Armement: record.armement || '',
-        Materiel: record.materiel || ''
-      }
-    }
-    else {
-      return res.status(400).json({ error: `Table ${tableName} non supportée. Utilisez ${CRFM_TABLE} ou ${CRCA_TABLE}` })
-    }
-
-    const gristData = { records: [{ fields: gristFields }] }
-    console.warn('📤 Envoi GRIST:', tableName, gristFields)
-
-    // 🔗 ENDPOINT OFFICIEL GRIST FRANCE (confirmé par vos curls)
-    const url = `${GRIST_SERVER}/api/docs/${GRIST_DOC_ID}/tables/${tableName}/records`
-    console.warn('🔗 URL GÉNÉRÉE:', url)
-
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GRIST_API_KEY}`,
-        'Content-Type': 'application/json',
-        'accept': 'application/json'
+        'Authorization': `Bearer ${CONFIG.GRIST_API_KEY}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(gristData)
     })
 
     if (!response.ok) {
       const text = await response.text()
-      console.error('❌ GRIST ERROR:', response.status, text.substring(0, 300))
-      return res.status(response.status).json({
-        error: `Grist ${response.status}`,
-        details: text.substring(0, 500),
-        table: tableName,
-        url,
-        sent: gristData
-      })
+      logError('GRIST ERROR', response.status, text.slice(0, MAX_ERROR_DETAILS_LENGTH))
+      res.writeHead(response.status, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: `Grist ${response.status}` }))
+      return
     }
 
     const result = await response.json()
-    console.warn('✅ SUCCÈS GRIST:', result)
-
-    return res.status(200).json({
-      success: true,
-      message: `${tableName} enregistré !`,
-      table: tableName,
-      inserted: result.ids
-    })
-  }
-  catch (error) {
-    console.error('❌ CRASH:', error)
-    return res.status(500).json({
-      error: (error as Error).message,
+    res.writeHead(HTTP_STATUS.OK, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ success: true, inserted: result.ids }))
+  } catch (error: unknown) {
+    logError('FETCH ERROR', error)
+    res.writeHead(HTTP_STATUS.INTERNAL_SERVER_ERROR, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({
+      error: (error as Error).message || 'Erreur réseau',
       timestamp: new Date().toISOString()
-    })
+    }))
   }
 }

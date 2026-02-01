@@ -1,14 +1,17 @@
+// src/types/index.ts
+
 // Types réutilisables
 export type Secteur = '' | 'ALPHA' | 'BRAVO' | 'CHARLIE' | 'DELTA'
-export type Horaire = '' | '6-14' | '14-22' | '22-6'
+export type Horaire = '' | '6h - 14h' | '14h - 22h' | '22h - 6h'
 export type Mission = '' | 'CTRZ' | 'OAD' | 'MO/RO' | 'SECURISATION' | 'RI'
 export type Intervention = '' | 'INITIATIVE' | 'CIC'
 export type Pam = '' | 'PAM_RAS' | 'PAM_NON_RAS'
 
 // Modèles complets
 export interface CrcaModel {
+  egm: string // ID Grist de l'escadron (Ref:Escadron)
   secteur: Secteur
-  indicatifs: string[]
+  indicatifs: string[] // Reste en array côté front, sera converti en string pour Grist
   intervention: Intervention
   natureIntervention: string
   heureDebut: string
@@ -19,6 +22,7 @@ export interface CrcaModel {
   armement: string
   materiel: string
   resume: string
+  traite?: boolean // champ "Traité" (Bool)
   created_at?: string
   updated_at?: string
 }
@@ -28,6 +32,7 @@ export interface CrfmModel {
   secteur: Secteur
   mission: Mission
   horaire: Horaire
+  escadron: string // ID Grist de l'escadron (Ref:Escadron)
   effectifs: number | null
   vlEngages: number | null
   nbOad: number | null
@@ -39,9 +44,10 @@ export interface CrfmModel {
   rensFrs: number | null
   stupCannabis: number | null
   stupPlant: number | null
-  stupAutres: string
-  infraTa: number | null // Correspond à TA dans l'API
-  infraDelits: number | null // Correspond à Delits dans l'API
+  diversQuantite: number | null // Quantité autres catégories
+  diversPrecision: string // Description autres catégories
+  infraTa: number | null // Correspond à TA dans Grist
+  infraDelits: number | null // Correspond à Delits dans Grist
   interpZgn: number | null // Correspond à Interpellation_ZGN
   interpZpn: number | null // Correspond à Interpellation_ZPN
   caillassageTouchant: number | null

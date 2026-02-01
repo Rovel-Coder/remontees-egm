@@ -1,18 +1,24 @@
+<!-- src/components/CrcaForm.vue -->
+
 <script setup lang="ts">
 import {
   DsfrAlert,
   DsfrButton,
   DsfrCheckbox,
   DsfrInput,
-  DsfrRadioButtonSet
+  DsfrRadioButtonSet,
+  DsfrSelect
 } from '@gouvminint/vue-dsfr'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
+
 
 type Secteur = 'ALPHA' | 'BRAVO' | 'CHARLIE' | 'DELTA' | ''
 type Intervention = 'INITIATIVE' | 'CIC' | ''
-type Pam = 'PAM_RAS' | 'PAM_NON_RAS' | ''
+type Pam = 'PAM RAS' | 'PAM non RAS' | ''
+
 
 interface CrcaModel {
+  egm: string
   secteur: Secteur
   indicatifs: string[]
   intervention: Intervention
@@ -27,16 +33,20 @@ interface CrcaModel {
   resume: string
 }
 
+
 const props = defineProps<{
   modelValue: Partial<CrcaModel>
 }>()
+
 
 const emit = defineEmits<{
   'update:modelValue': [value: Partial<CrcaModel>]
   'submit': [data: CrcaModel]
 }>()
 
+
 const model = ref<Partial<CrcaModel>>({
+  egm: '',
   secteur: '' as Secteur,
   indicatifs: [],
   intervention: '' as Intervention,
@@ -52,25 +62,68 @@ const model = ref<Partial<CrcaModel>>({
   ...props.modelValue,
 })
 
+
 const isSubmitting = ref(false)
 const submitMessage = ref('')
 const submitError = ref('')
 
-// Synchronisation avec props
+
+const escadronOptions = ref<{value: string, text: string}[]>([])
+const loadingEscadrons = ref(false)
+
+
+onMounted(async () => {
+  loadingEscadrons.value = true
+  try {
+    const GRIST_DOC_ID = '287D12LdHqN4hYBpsm52fo'
+    const GRIST_API_KEY = import.meta.env.VITE_GRIST_API_KEY
+    const ESCADRON_TABLE = 'Escadron'
+    
+    const response = await fetch(
+      `https://grist.numerique.gouv.fr/api/docs/${GRIST_DOC_ID}/tables/${ESCADRON_TABLE}/records`,
+      {
+        headers: {
+          'Authorization': `Bearer ${GRIST_API_KEY}`
+        }
+      }
+    )
+    
+    const data = await response.json()
+    
+    escadronOptions.value = [
+      { value: '', text: '-- Sélectionnez un escadron --' },
+      ...data.records.map((record: any) => ({
+        value: String(record.id),
+        text: record.fields.Nom_Escadron || `Escadron ${record.id}`
+      }))
+    ]
+    
+  } catch (error) {
+    console.error('❌ Erreur chargement escadrons:', error)
+    escadronOptions.value = [
+      { value: '', text: 'Erreur de chargement' }
+    ]
+  } finally {
+    loadingEscadrons.value = false
+  }
+})
+
+
 watch(() => props.modelValue, (newVal) => {
   model.value = { ...model.value, ...newVal }
 }, { deep: true })
 
-// Auto-emit sur chaque changement
+
 watch(model, (newVal) => {
   emit('update:modelValue', newVal)
 }, { deep: true })
 
-// Validation du formulaire
+
 const isValid = computed(() => {
   const m = model.value
   return (
-    m.secteur !== ''
+    m.egm !== ''
+    && m.secteur !== ''
     && (m.indicatifs?.length ?? 0) > 0
     && m.intervention !== ''
     && m.natureIntervention?.trim() !== ''
@@ -82,6 +135,7 @@ const isValid = computed(() => {
   )
 })
 
+
 function updateIndicatifs (value: string, checked: boolean) {
   const currentIndicatifs = model.value.indicatifs || []
   const newIndicatifs = checked
@@ -89,6 +143,7 @@ function updateIndicatifs (value: string, checked: boolean) {
     : currentIndicatifs.filter(i => i !== value)
   model.value.indicatifs = newIndicatifs
 }
+
 
 function formatHeureOnBlur (value: string): string {
   const digits = value.replace(/\D/g, '').slice(0, 4)
@@ -99,6 +154,7 @@ function formatHeureOnBlur (value: string): string {
   const minutes = digits.slice(2, 4)
   return `${heures}h${minutes}`
 }
+
 
 const indicatifsPatrouille = [
   { label: 'A1', value: 'A1' },
@@ -151,10 +207,12 @@ const indicatifsPatrouille = [
   { label: 'D33', value: 'D33' }
 ]
 
+
 const indicatifsA = computed(() => indicatifsPatrouille.filter(i => i.value.startsWith('A')))
 const indicatifsB = computed(() => indicatifsPatrouille.filter(i => i.value.startsWith('B')))
 const indicatifsC = computed(() => indicatifsPatrouille.filter(i => i.value.startsWith('C')))
 const indicatifsD = computed(() => indicatifsPatrouille.filter(i => i.value.startsWith('D')))
+
 
 async function onSubmit (event: Event) {
   event.preventDefault()
@@ -169,8 +227,8 @@ async function onSubmit (event: Event) {
   submitMessage.value = ''
 
   try {
-    // Préparer les données complètes
     const crcaData: CrcaModel = {
+      egm: model.value.egm!,
       secteur: model.value.secteur!,
       indicatifs: model.value.indicatifs!,
       intervention: model.value.intervention!,
@@ -185,14 +243,13 @@ async function onSubmit (event: Event) {
       resume: model.value.resume!,
     }
 
-    // Émettre les données complètes vers le parent
     emit('submit', crcaData)
 
     submitMessage.value = '✅ CRCA envoyé avec succès vers Grist !'
 
-    // Reset formulaire après 3 secondes
     setTimeout(() => {
       Object.assign(model.value, {
+        egm: '',
         secteur: '' as Secteur,
         indicatifs: [],
         intervention: '' as Intervention,
@@ -242,6 +299,16 @@ async function onSubmit (event: Event) {
       title="Erreur"
       :description="submitError"
       type="error"
+      class="fr-mb-3w"
+    />
+
+    <!-- Select Escadron -->
+    <DsfrSelect
+      v-model="model.egm"
+      label="Escadron (EGM) *"
+      :options="escadronOptions"
+      :disabled="loadingEscadrons"
+      required
       class="fr-mb-3w"
     />
 
@@ -393,15 +460,15 @@ async function onSubmit (event: Event) {
       v-model="model.pam"
       legend="PAM *"
       :options="[
-        { label: 'PAM RAS', value: 'PAM_RAS' },
-        { label: 'PAM non RAS', value: 'PAM_NON_RAS' },
+        { label: 'PAM RAS', value: 'PAM RAS' },
+        { label: 'PAM non RAS', value: 'PAM non RAS' },
       ]"
       class="fr-mb-3w"
       required
     />
 
     <div
-      v-if="model.pam === 'PAM_NON_RAS'"
+      v-if="model.pam === 'PAM non RAS'"
       class="fr-grid-row fr-grid-row--gutters fr-mb-3w"
     >
       <div class="fr-col-12 fr-col-md-4">

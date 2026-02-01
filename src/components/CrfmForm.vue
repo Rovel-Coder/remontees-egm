@@ -1,21 +1,29 @@
+<!-- src/components/CrfmForm.vue -->
+
 <script setup lang="ts">
 import {
   DsfrButton,
   DsfrInput,
-  DsfrRadioButtonSet
+  DsfrRadioButtonSet,
+  DsfrSelect
 } from '@gouvminint/vue-dsfr'
-import { reactive, watch } from 'vue'
+import { reactive, watch, onMounted, ref } from 'vue'
 
+
+// Props/Emits
 const props = defineProps<{
   modelValue: Partial<CrfmModel>
 }>()
+
 
 const emit = defineEmits<{
   'update:modelValue': [value: Partial<CrfmModel>]
   'submit': [data: CrfmModel]
 }>()
 
-type Horaire = '6-14' | '14-22' | '22-6' | ''
+
+// Types
+type Horaire = '6h - 14h' | '14h - 22h' | '22h - 6h' | ''
 type Secteur = 'ALPHA' | 'BRAVO' | 'CHARLIE' | 'DELTA' | ''
 type Mission =
   | 'CTRZ'
@@ -24,12 +32,15 @@ type Mission =
   | 'SECURISATION'
   | 'RI'
   | ''
+type Escadron = string  // ID Grist de la table référencée
+
 
 interface CrfmModel {
   date: string
   horaire: Horaire
   secteur: Secteur
   mission: Mission
+  escadron: Escadron
   vlEngages: number | null
   effectifs: number | null
   nbOad: number | null
@@ -56,7 +67,8 @@ interface CrfmModel {
   mun762: number | null
   stupCannabis: number | null
   stupPlant: number | null
-  stupAutres: string
+  stupAutres: number | null
+  stupAutresPrecision: string
   infraTa: number | null
   infraDelits: number | null
   interpZgn: number | null
@@ -68,11 +80,14 @@ interface CrfmModel {
   commentairePam: string
 }
 
+
+// État initial
 const initialState: Partial<CrfmModel> = {
   date: '',
   horaire: '',
   secteur: '',
   mission: '',
+  escadron: '',
   vlEngages: null,
   effectifs: null,
   nbOad: null,
@@ -99,7 +114,8 @@ const initialState: Partial<CrfmModel> = {
   mun762: null,
   stupCannabis: null,
   stupPlant: null,
-  stupAutres: '',
+  stupAutres: null,
+  stupAutresPrecision: '',
   infraTa: null,
   infraDelits: null,
   interpZgn: null,
@@ -111,34 +127,84 @@ const initialState: Partial<CrfmModel> = {
   commentairePam: ''
 }
 
+
+// Modèle réactif
 const model = reactive<Partial<CrfmModel>>({
   ...initialState,
   ...props.modelValue
 })
 
+
+// Watchers
 watch(() => props.modelValue, (newValue) => {
   Object.assign(model, newValue)
 }, { deep: true, immediate: true })
+
 
 watch(model, (newValue) => {
   emit('update:modelValue', newValue)
 }, { deep: true })
 
+
+// Reset
 function resetForm () {
   Object.assign(model, initialState)
 }
 
+
+// Champs obligatoires
 const requiredFields: (keyof CrfmModel)[] = [
   'date',
   'horaire',
   'secteur',
   'mission',
+  'escadron',
   'vlEngages',
   'effectifs',
   'commentairePam'
 ]
 
-// ✅ CORRECTION : Fonction nommée onSubmit (comme CrcaForm)
+
+// OPTIONS ESCADRON DYNAMIQUES GRIST
+const escadronOptions = ref<{value: string, text: string}[]>([])
+const loadingEscadrons = ref(false)
+
+
+onMounted(async () => {
+  loadingEscadrons.value = true
+  try {
+    const GRIST_DOC_ID = '287D12LdHqN4hYBpsm52fo'
+    const GRIST_API_KEY = import.meta.env.VITE_GRIST_API_KEY
+    const ESCADRON_TABLE_ID = 5
+    
+    const response = await fetch(
+      `https://grist.numerique.gouv.fr/api/docs/${GRIST_DOC_ID}/tables/${ESCADRON_TABLE_ID}/records`,
+      {
+        headers: {
+          'Authorization': `Bearer ${GRIST_API_KEY}`
+        }
+      }
+    )
+    
+    const data = await response.json()
+    
+    escadronOptions.value = data.records.map((record: any) => ({
+      value: String(record.id),
+      text: record.fields.Nom_Escadron || record.fields.Nom || record.fields.Code || `Escadron ${record.id}`
+    }))
+    
+  } catch (error) {
+    console.error('❌ Erreur chargement escadrons Grist:', error)
+    escadronOptions.value = [
+      { value: '', text: 'Erreur de chargement' }
+    ]
+  } finally {
+    loadingEscadrons.value = false
+  }
+})
+
+
+// Submit
 async function onSubmit (event: Event) {
   event.preventDefault()
 
@@ -152,12 +218,12 @@ async function onSubmit (event: Event) {
   }
 
   try {
-    // Préparer les données complètes pour le parent
     const crfmData: CrfmModel = {
       date: model.date!,
       horaire: model.horaire!,
       secteur: model.secteur!,
       mission: model.mission!,
+      escadron: model.escadron!,
       vlEngages: model.vlEngages!,
       effectifs: model.effectifs!,
       nbOad: model.nbOad ?? null,
@@ -184,7 +250,8 @@ async function onSubmit (event: Event) {
       mun762: model.mun762 ?? null,
       stupCannabis: model.stupCannabis ?? null,
       stupPlant: model.stupPlant ?? null,
-      stupAutres: model.stupAutres ?? '',
+      stupAutres: model.stupAutres ?? null,
+      stupAutresPrecision: model.stupAutresPrecision ?? '',
       infraTa: model.infraTa ?? null,
       infraDelits: model.infraDelits ?? null,
       interpZgn: model.interpZgn ?? null,
@@ -196,10 +263,8 @@ async function onSubmit (event: Event) {
       commentairePam: model.commentairePam!
     }
 
-    // ✅ Émettre vers le parent (comme CrcaForm)
     emit('submit', crfmData)
 
-    // ✅ Reset automatique après 3 secondes (comme CrcaForm)
     setTimeout(() => {
       resetForm()
     }, 3000)
@@ -210,19 +275,34 @@ async function onSubmit (event: Event) {
 }
 </script>
 
+
+
 <template>
   <form @submit="onSubmit">
     <h2 class="fr-h3">
       CR FIN DE MISSION
     </h2>
 
-    <!-- Date / Horaires / Secteur / Mission / VL / Effectifs / OAD -->
+    <!-- ESCADRON EN PREMIER -->
+    <div class="fr-grid-row fr-grid-row--gutters fr-mb-4w">
+      <div class="fr-col-12 fr-col-md-6">
+        <DsfrSelect
+          v-model="model.escadron"
+          label="Escadron"
+          required
+          :options="escadronOptions"
+          :disabled="loadingEscadrons"
+        />
+      </div>
+    </div>
+
+    <!-- Date / Horaires / Secteur / Mission -->
     <div class="fr-grid-row fr-grid-row--gutters fr-mb-4w">
       <div class="fr-col-12 fr-col-md-3">
         <DsfrInput
           v-model="model.date"
           type="date"
-          label="Date *"
+          label="Date"
           label-visible
           required
         />
@@ -230,11 +310,11 @@ async function onSubmit (event: Event) {
       <div class="fr-col-12 fr-col-md-3">
         <DsfrRadioButtonSet
           v-model="model.horaire"
-          legend="Horaires *"
+          legend="Horaires"
           :options="[
-            { label: '6h - 14h', value: '6-14' },
-            { label: '14h - 22h', value: '14-22' },
-            { label: '22h - 6h', value: '22-6' },
+            { label: '6h - 14h', value: '6h - 14h' },
+            { label: '14h - 22h', value: '14h - 22h' },
+            { label: '22h - 6h', value: '22h - 6h' },
           ]"
           required
         />
@@ -242,7 +322,7 @@ async function onSubmit (event: Event) {
       <div class="fr-col-12 fr-col-md-3">
         <DsfrRadioButtonSet
           v-model="model.secteur"
-          legend="Secteur *"
+          legend="Secteur"
           :options="[
             { label: 'ALPHA', value: 'ALPHA' },
             { label: 'BRAVO', value: 'BRAVO' },
@@ -255,7 +335,7 @@ async function onSubmit (event: Event) {
       <div class="fr-col-12 fr-col-md-3">
         <DsfrRadioButtonSet
           v-model="model.mission"
-          legend="Mission *"
+          legend="Mission"
           :options="[
             { label: 'CTRZ', value: 'CTRZ' },
             { label: 'OAD', value: 'OAD' },
@@ -275,7 +355,7 @@ async function onSubmit (event: Event) {
           v-model="model.vlEngages"
           type="number"
           min="0"
-          label="VL engagés *"
+          label="VL engagés"
           label-visible
           required
         />
@@ -285,7 +365,7 @@ async function onSubmit (event: Event) {
           v-model="model.effectifs"
           type="number"
           min="0"
-          label="Effectifs *"
+          label="Effectifs"
           label-visible
           required
         />
@@ -388,16 +468,16 @@ async function onSubmit (event: Event) {
         Stupéfiants (quantité)
       </h3>
       <div class="fr-grid-row fr-grid-row--gutters fr-mb-2w">
-        <div class="fr-col-12 fr-col-md-6">
+        <div class="fr-col-12 fr-col-md-4">
           <DsfrInput
             v-model="model.stupCannabis"
             type="number"
             min="0"
-            label="Cannabis"
+            label="Cannabis (gr)"
             label-visible
           />
         </div>
-        <div class="fr-col-12 fr-col-md-6">
+        <div class="fr-col-12 fr-col-md-4">
           <DsfrInput
             v-model="model.stupPlant"
             type="number"
@@ -406,10 +486,19 @@ async function onSubmit (event: Event) {
             label-visible
           />
         </div>
+        <div class="fr-col-12 fr-col-md-4">
+          <DsfrInput
+            v-model="model.stupAutres"
+            type="number"
+            min="0"
+            label="Autres (quantité)"
+            label-visible
+          />
+        </div>
       </div>
       <DsfrInput
-        v-model="model.stupAutres"
-        label="Si autres, précisez"
+        v-model="model.stupAutresPrecision"
+        label="Si autres, précisez (type)"
         label-visible
       />
     </section>
@@ -700,7 +789,7 @@ async function onSubmit (event: Event) {
       <DsfrInput
         v-model="model.commentairePam"
         type="textarea"
-        label="Commentaire (PAM obligatoire) *"
+        label="Commentaire (PAM obligatoire)"
         label-visible
         required
       />

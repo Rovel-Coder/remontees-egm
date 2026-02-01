@@ -7,6 +7,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    Copie: typeof import('./components/CrcaForm - Copie.vue')['default']
     CrcaForm: typeof import('./components/CrcaForm.vue')['default']
     CrfmForm: typeof import('./components/CrfmForm.vue')['default']
     DsfrAlert: typeof import('@gouvminint/vue-dsfr')['DsfrAlert']
