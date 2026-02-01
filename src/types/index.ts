@@ -5,7 +5,7 @@ export type Secteur = '' | 'ALPHA' | 'BRAVO' | 'CHARLIE' | 'DELTA'
 export type Horaire = '' | '6h - 14h' | '14h - 22h' | '22h - 6h'
 export type Mission = '' | 'CTRZ' | 'OAD' | 'MO/RO' | 'SECURISATION' | 'RI'
 export type Intervention = '' | 'INITIATIVE' | 'CIC'
-export type Pam = '' | 'PAM RAS' | 'PAM NON RAS'
+export type Pam = '' | 'PAM RAS' | 'PAM non RAS'  // ← "non" en minuscules
 
 // Modèles complets
 export interface CrcaModel {
@@ -44,12 +44,12 @@ export interface CrfmModel {
   rensFrs: number | null
   stupCannabis: number | null
   stupPlant: number | null
-  stupAutres: number | null // ← Changé de diversQuantite à stupAutres
-  stupAutresPrecision: string // ← Changé de diversPrecision à stupAutresPrecision
-  infraTa: number | null // Correspond à TA dans Grist
-  infraDelits: number | null // Correspond à Delits dans Grist
-  interpZgn: number | null // Correspond à Interpellation_ZGN
-  interpZpn: number | null // Correspond à Interpellation_ZPN
+  stupAutres: number | null
+  stupAutresPrecision: string
+  infraTa: number | null
+  infraDelits: number | null
+  interpZgn: number | null
+  interpZpn: number | null
   caillassageTouchant: number | null
   caillassageNonTouchant: number | null
   refusAvecInterp: number | null
